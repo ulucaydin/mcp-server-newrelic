@@ -5,6 +5,7 @@ Enhanced plugin management system with dependency resolution
 import importlib
 import inspect
 import logging
+import threading
 from typing import Dict, List, Set, Optional, Any, Type, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -272,6 +273,10 @@ class EnhancedPluginManager:
         self.service_registry = ServiceRegistry()
         self.plugins: Dict[str, PluginInstance] = {}
         self.load_order: List[str] = []
+        
+        # Thread safety
+        self._lock = threading.RLock()
+        logger.debug("Initialized EnhancedPluginManager with thread safety")
     
     def discover_plugins(self) -> Dict[str, PluginInstance]:
         """Discover all available plugins"""
@@ -416,104 +421,110 @@ class EnhancedPluginManager:
     
     def load_all(self, services: Dict[str, Any]):
         """Load all plugins with dependency resolution"""
-        # Discover plugins
-        discovered = self.discover_plugins()
-        logger.info(f"Discovered {len(discovered)} plugins")
-        
-        # Filter enabled plugins
-        enabled_plugins = {
-            name: plugin for name, plugin in discovered.items()
-            if plugin.metadata.enabled
-        }
-        
-        # Resolve dependencies
-        load_order = self.resolve_dependencies(enabled_plugins)
-        
-        # Load plugins in order
-        loaded = 0
-        failed = 0
-        
-        for plugin in load_order:
-            if plugin.state == "failed":
-                failed += 1
-                continue
+        with self._lock:
+            # Discover plugins
+            discovered = self.discover_plugins()
+            logger.info(f"Discovered {len(discovered)} plugins")
             
-            if self.load_plugin(plugin, services):
-                loaded += 1
-                self.plugins[plugin.metadata.name] = plugin
-                self.load_order.append(plugin.metadata.name)
-            else:
-                failed += 1
-        
-        logger.info(f"Plugin loading complete: {loaded} loaded, {failed} failed")
+            # Filter enabled plugins
+            enabled_plugins = {
+                name: plugin for name, plugin in discovered.items()
+                if plugin.metadata.enabled
+            }
+            
+            # Resolve dependencies
+            load_order = self.resolve_dependencies(enabled_plugins)
+            
+            # Load plugins in order
+            loaded = 0
+            failed = 0
+            
+            for plugin in load_order:
+                if plugin.state == "failed":
+                    failed += 1
+                    continue
+                
+                if self.load_plugin(plugin, services):
+                    loaded += 1
+                    self.plugins[plugin.metadata.name] = plugin
+                    self.load_order.append(plugin.metadata.name)
+                else:
+                    failed += 1
+            
+            logger.info(f"Plugin loading complete: {loaded} loaded, {failed} failed")
     
     def unload_plugin(self, plugin_name: str):
         """Unload a plugin"""
-        if plugin_name not in self.plugins:
-            logger.warning(f"Plugin {plugin_name} not loaded")
-            return
-        
-        plugin = self.plugins[plugin_name]
-        
-        # Remove registered tools
-        for tool in plugin.provided_tools:
-            if hasattr(self.app, '_tools') and tool in self.app._tools:
-                del self.app._tools[tool]
-                logger.debug(f"Removed tool: {tool}")
-        
-        # Remove registered resources
-        for resource in plugin.provided_resources:
-            if hasattr(self.app, '_resources') and resource in self.app._resources:
-                del self.app._resources[resource]
-                logger.debug(f"Removed resource: {resource}")
-        
-        # Unregister provided services
-        for service_name in plugin.metadata.provides_services:
-            if self.service_registry.providers.get(service_name) == plugin_name:
-                self.service_registry.unregister(service_name)
-                logger.debug(f"Unregistered service: {service_name}")
-        
-        # Clear plugin's tracked items
-        plugin.provided_tools.clear()
-        plugin.provided_resources.clear()
-        plugin.state = "unloaded"
-        
-        logger.info(f"Unloaded plugin: {plugin_name}")
+        with self._lock:
+            if plugin_name not in self.plugins:
+                logger.warning(f"Plugin {plugin_name} not loaded")
+                return
+            
+            plugin = self.plugins[plugin_name]
+            
+            # Remove registered tools
+            for tool in plugin.provided_tools:
+                if hasattr(self.app, '_tools') and tool in self.app._tools:
+                    del self.app._tools[tool]
+                    logger.debug(f"Removed tool: {tool}")
+            
+            # Remove registered resources
+            for resource in plugin.provided_resources:
+                if hasattr(self.app, '_resources') and resource in self.app._resources:
+                    del self.app._resources[resource]
+                    logger.debug(f"Removed resource: {resource}")
+            
+            # Unregister provided services
+            for service_name in plugin.metadata.provides_services:
+                if self.service_registry.providers.get(service_name) == plugin_name:
+                    self.service_registry.unregister(service_name)
+                    logger.debug(f"Unregistered service: {service_name}")
+            
+            # Clear plugin's tracked items
+            plugin.provided_tools.clear()
+            plugin.provided_resources.clear()
+            plugin.state = "unloaded"
+            
+            logger.info(f"Unloaded plugin: {plugin_name}")
     
     def reload_plugin(self, plugin_name: str, services: Dict[str, Any]):
         """Reload a plugin"""
-        self.unload_plugin(plugin_name)
-        
-        # Re-discover in case code changed
-        discovered = self.discover_plugins()
-        if plugin_name in discovered:
-            plugin = discovered[plugin_name]
-            self.load_plugin(plugin, services)
+        with self._lock:
+            self.unload_plugin(plugin_name)
+            
+            # Re-discover in case code changed
+            discovered = self.discover_plugins()
+            if plugin_name in discovered:
+                plugin = discovered[plugin_name]
+                if self.load_plugin(plugin, services):
+                    self.plugins[plugin.metadata.name] = plugin
     
     def get_plugin_info(self) -> List[Dict[str, Any]]:
         """Get information about all plugins"""
-        info = []
-        
-        for plugin in self.plugins.values():
-            info.append({
-                "name": plugin.metadata.name,
-                "version": plugin.metadata.version,
-                "description": plugin.metadata.description,
-                "state": plugin.state,
-                "error": plugin.error,
-                "dependencies": plugin.metadata.dependencies,
-                "tools": plugin.provided_tools,
-                "resources": plugin.provided_resources,
-                "config": plugin.config
-            })
-        
-        return info
+        with self._lock:
+            info = []
+            
+            for plugin in self.plugins.values():
+                info.append({
+                    "name": plugin.metadata.name,
+                    "version": plugin.metadata.version,
+                    "description": plugin.metadata.description,
+                    "state": plugin.state,
+                    "error": plugin.error,
+                    "dependencies": plugin.metadata.dependencies,
+                    "tools": plugin.provided_tools.copy(),  # Copy to avoid external modification
+                    "resources": plugin.provided_resources.copy(),
+                    "config": plugin.config.copy() if plugin.config else {}
+                })
+            
+            return info
     
     def get_dependency_graph(self) -> Dict[str, List[str]]:
         """Get plugin dependency graph"""
-        graph = {}
-        
-        for plugin in self.plugins.values():
-            graph[plugin.metadata.name] = plugin.metadata.dependencies
-        
-        return graph
+        with self._lock:
+            graph = {}
+            
+            for plugin in self.plugins.values():
+                graph[plugin.metadata.name] = plugin.metadata.dependencies.copy()
+            
+            return graph
