@@ -1,32 +1,72 @@
-# New Relic MCP Server
+# New Relic MCP Server 🚀
 
-A comprehensive Model Context Protocol (MCP) server that provides AI assistants (Claude, GitHub Copilot) with full access to New Relic's observability platform. Built with an advanced plugin architecture, this server enables natural language queries, automated monitoring, and intelligent insights across your entire stack.
+**Enterprise-grade Model Context Protocol server** that seamlessly integrates New Relic's observability platform with AI assistants like **GitHub Copilot**, **Claude Code**, and **Claude Desktop**. Transform your development workflow with intelligent, context-aware observability insights.
 
-## 🚀 Features
+[![Production Ready](https://img.shields.io/badge/Status-Production%20Ready-green.svg)](https://github.com/your-org/mcp-server-newrelic)
+[![Security Hardened](https://img.shields.io/badge/Security-Hardened-blue.svg)](SECURITY.md)
+[![Test Coverage](https://img.shields.io/badge/Coverage-80%25+-brightgreen.svg)](tests/)
+[![AI Assistants](https://img.shields.io/badge/AI%20Assistants-3%20Supported-purple.svg)](#ai-assistant-integrations)
 
-### Core Capabilities
-- **Multi-Account Support**: Switch between New Relic accounts seamlessly
-- **Plugin Architecture**: Modular design with auto-discovery of feature plugins
-- **Async Operations**: High-performance async NerdGraph client with retries
-- **Session Management**: Stateful conversations with context preservation
-- **Entity Definitions**: Integrated golden metrics from New Relic's OSS definitions
-- **Telemetry**: Built-in observability for the MCP server itself
-- **Documentation Search**: Local cache of New Relic docs for instant answers
+## ✨ What Makes This Special
 
-### Monitoring Domains
-- **APM**: Application performance metrics, transactions, deployments
-- **Infrastructure**: Hosts, containers, Kubernetes, processes, disk, network
-- **Entities**: Search, relationships, golden signals
-- **Alerts**: Policies, incidents, acknowledgments
-- **Logs**: Search, patterns, error analysis, tailing
-- **Synthetics**: Monitor management and results
-- **Metrics**: NRQL queries, custom dashboards
+🤖 **AI-Native Design**: Purpose-built for AI assistants with natural language interfaces  
+🔒 **Enterprise Security**: Thread-safe, memory-bounded, with comprehensive error sanitization  
+⚡ **High Performance**: Connection pooling, caching, and async operations throughout  
+🔧 **Production Ready**: Comprehensive testing, monitoring, and deployment automation  
+📊 **Complete Observability**: APM, Infrastructure, Logs, Alerts, Synthetics, and more  
 
-### Access Methods
-- **AI Assistants**: Claude Desktop, Claude Code, GitHub Copilot
-- **CLI Tool**: Direct command execution for automation
-- **Docker**: Containerized deployment
-- **HTTP API**: REST endpoint for integrations (future)
+## 🎯 AI Assistant Integrations
+
+### GitHub Copilot + VS Code
+```bash
+# One-command setup
+curl -sSL https://raw.githubusercontent.com/your-org/mcp-server-newrelic/main/scripts/setup-github-copilot.sh | bash
+
+# Then in Copilot Chat:
+@copilot /newrelic What's the error rate for my applications?
+```
+
+### Claude Desktop
+```bash
+# One-command setup  
+curl -sSL https://raw.githubusercontent.com/your-org/mcp-server-newrelic/main/scripts/setup-claude-desktop.sh | bash
+
+# Then chat naturally:
+"Show me the health of my New Relic applications"
+```
+
+### Claude Code CLI
+```bash
+# One-command setup
+curl -sSL https://raw.githubusercontent.com/your-org/mcp-server-newrelic/main/scripts/setup-claude-code.sh | bash
+
+# Then use workflows:
+claude-code workflow run performance-analysis
+```
+
+## 🚀 Core Features
+
+### 🏗️ Enterprise Architecture
+- **Thread-Safe Operations**: Production-grade concurrency with RLock protection
+- **Memory Management**: Bounded LRU caching prevents OOM conditions  
+- **Connection Pooling**: Efficient resource management with reference counting
+- **Error Sanitization**: Security-focused error handling prevents information leakage
+- **Request Signing**: HMAC-based authentication prevents replay attacks
+
+### 📊 Complete New Relic Coverage
+- **APM**: Application performance, transactions, traces, deployments
+- **Infrastructure**: Hosts, containers, Kubernetes, processes, storage, network
+- **Entities**: Search, relationships, golden signals, dependencies
+- **Alerts & Incidents**: Policies, conditions, notifications, acknowledgments  
+- **Logs**: Search, patterns, tail, error analysis, correlation
+- **Synthetics**: Monitor management, results, alerting
+- **Custom Metrics**: NRQL queries, dashboards, time series analysis
+
+### 🎮 Multiple Access Patterns
+- **Natural Language**: AI assistants understand your intent
+- **CLI Tools**: Direct command execution for automation
+- **Workflows**: Pre-built analysis templates  
+- **Docker**: Containerized deployment with multi-stage builds
 
 ## 📋 Prerequisites
 
