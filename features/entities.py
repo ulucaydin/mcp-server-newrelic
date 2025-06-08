@@ -1,16 +1,32 @@
 import json
 from typing import List, Optional, Dict, Any
 from fastmcp import FastMCP
+import logging
+import sys
+import os
 
-# Use absolute imports
-import client
-import config
+# Add parent directory to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-def register(mcp: FastMCP):
-    """Registers entity-related tools, resources, and prompts."""
+from core.plugin_loader import PluginBase
 
-    @mcp.tool()
-    def search_entities(
+logger = logging.getLogger(__name__)
+
+
+class EntitiesPlugin(PluginBase):
+    """Entity search and management plugin"""
+    
+    @staticmethod
+    def register(app: FastMCP, services: Dict[str, Any]):
+        """Register entity-related tools and resources"""
+        
+        nerdgraph = services["nerdgraph"]
+        entity_defs = services.get("entity_definitions")
+        session_manager = services.get("session_manager")
+        default_account_id = services.get("account_id")
+
+        @app.tool()
+        async def search_entities(
         name: Optional[str] = None,
         entity_type: Optional[str] = None,
         domain: Optional[str] = None,
@@ -32,77 +48,77 @@ def register(mcp: FastMCP):
         Returns:
             A JSON string with the search results (list of entities with basic details) or errors.
         """
-        conditions = []
-        # Add account condition *only* if target_account_id is specified
-        if target_account_id is not None:
-             # Ensure it's a valid integer if provided
-             try:
-                 acc_id = int(target_account_id)
-                 conditions.append(f"accountId = {acc_id}")
-             except (ValueError, TypeError):
-                  return json.dumps({"errors": [{"message": f"Invalid target_account_id: {target_account_id}. Must be an integer."}]})
-        elif config.ACCOUNT_ID:
-             # If no target is specified, but a global one exists, maybe default to it?
-             # Or keep it broad? Let's keep it broad unless specified.
-             # conditions.append(f"accountId = {config.ACCOUNT_ID}")
-             print("Searching across all accessible accounts. Specify target_account_id to limit.")
+            conditions = []
+            # Add account condition *only* if target_account_id is specified
+            if target_account_id is not None:
+                # Ensure it's a valid integer if provided
+                try:
+                    acc_id = int(target_account_id)
+                    conditions.append(f"accountId = {acc_id}")
+                except (ValueError, TypeError):
+                    return json.dumps({"errors": [{"message": f"Invalid target_account_id: {target_account_id}. Must be an integer."}]})
+            elif default_account_id:
+                # Use default account if available
+                logger.info("Using default account for search. Specify target_account_id to search other accounts.")
+                conditions.append(f"accountId = {default_account_id}")
 
 
-        if name:
-            # Basic escaping for potential single quotes in name
-            escaped_name = name.replace("'", "\\'")
-            conditions.append(f"name LIKE '%{escaped_name}%'")
-        if entity_type:
-            conditions.append(f"type = '{entity_type}'")
-        if domain:
-            conditions.append(f"domain = '{domain}'")
-        if tags:
-            tag_conditions = []
-            for tag in tags:
-                if isinstance(tag, dict) and "key" in tag and "value" in tag:
-                     # Escape single quotes in tag values too
-                     escaped_tag_value = str(tag['value']).replace("'", "\\'")
-                     tag_conditions.append(f"tags.`{tag['key']}` = '{escaped_tag_value}'") # Use backticks for keys that might have special chars
-            if tag_conditions:
-                 conditions.append(" AND ".join(tag_conditions))
-
-        # Require at least one *non-account* search criterion
-        # Need to check if conditions list only contains the accountId condition
-        non_account_conditions_exist = any(not cond.strip().startswith("accountId") for cond in conditions)
-        if not non_account_conditions_exist:
-             return json.dumps({"errors": [{"message": "At least one non-account search criterion (name, type, domain, tags) must be provided."}]})
-
-
-        search_query = " AND ".join(conditions)
-
-        query = """
-        query ($searchQuery: String!, $limit: Int) {
-          actor {
-            # entitySearch doesn't allow specifying account ID directly in the call, only via the query string
-            entitySearch(query: $searchQuery, options: {limit: $limit}) {
-              results {
-                entities {
-                  guid
-                  name
-                  entityType
-                  domain
-                  accountId
-                  tags { key value }
+            if name:
+                # Basic escaping for potential single quotes in name
+                escaped_name = name.replace("'", "\\'")
+                conditions.append(f"name LIKE '%{escaped_name}%'")
+            if entity_type:
+                conditions.append(f"type = '{entity_type}'")
+            if domain:
+                conditions.append(f"domain = '{domain}'")
+            if tags:
+                tag_conditions = []
+                for tag in tags:
+                    if isinstance(tag, dict) and "key" in tag and "value" in tag:
+                        # Escape single quotes in tag values too
+                        escaped_tag_value = str(tag['value']).replace("'", "\\'")
+                        tag_conditions.append(f"tags.`{tag['key']}` = '{escaped_tag_value}'")
+                if tag_conditions:
+                    conditions.append(" AND ".join(tag_conditions))
+            
+            # Require at least one search criterion
+            if not conditions:
+                return json.dumps({"errors": [{"message": "At least one search criterion must be provided."}]})
+            
+            search_query = " AND ".join(conditions)
+            
+            query = """
+            query ($searchQuery: String!, $limit: Int) {
+              actor {
+                entitySearch(query: $searchQuery, options: {limit: $limit}) {
+                  results {
+                    entities {
+                      guid
+                      name
+                      entityType
+                      domain
+                      accountId
+                      tags { key value }
+                    }
+                    nextCursor
+                  }
+                  count
                 }
-                nextCursor
               }
-              count
             }
-          }
-        }
-        """
-        variables = {"searchQuery": search_query, "limit": limit}
-        result = client.execute_nerdgraph_query(query, variables)
-        return client.format_json_response(result)
+            """
+            
+            try:
+                variables = {"searchQuery": search_query, "limit": limit}
+                result = await nerdgraph.query(query, variables)
+                return json.dumps(result, indent=2)
+            except Exception as e:
+                logger.error(f"Entity search failed: {e}")
+                return json.dumps({"errors": [{"message": str(e)}]})
 
-    @mcp.resource("newrelic://entity/{guid}")
-    def get_entity_details(guid: str) -> str:
-        """
+        @app.resource("newrelic://entity/{guid}")
+        async def get_entity_details(guid: str) -> str:
+            """
         Retrieves detailed information for a specific New Relic entity by its GUID.
 
         Args:
@@ -111,11 +127,19 @@ def register(mcp: FastMCP):
         Returns:
             A JSON string containing the entity's details or errors.
         """
-        if not guid or not isinstance(guid, str):
-            return json.dumps({"errors": [{"message": "Valid entity GUID must be provided."}]})
-
-        # This query is now quite large, maybe split fragments later if needed
-        query = """
+            if not guid or not isinstance(guid, str):
+                return json.dumps({"errors": [{"message": "Valid entity GUID must be provided."}]})
+            
+            # Check session cache first
+            if session_manager:
+                session = session_manager.get_or_create_session()
+                cached = session.get_cached_entity(guid)
+                if cached:
+                    logger.debug(f"Returning cached entity data for {guid}")
+                    return json.dumps(cached, indent=2)
+            
+            # This query is now quite large, maybe split fragments later if needed
+            query = """
         query ($guid: EntityGuid!) {
           actor {
             entity(guid: $guid) {
@@ -211,33 +235,96 @@ def register(mcp: FastMCP):
           }
         }
         """
-        variables = {"guid": guid}
-        result = client.execute_nerdgraph_query(query, variables)
-        return client.format_json_response(result)
+            try:
+                variables = {"guid": guid}
+                result = await nerdgraph.query(query, variables)
+                
+                # Cache the result
+                if session_manager and "actor" in result and "entity" in result["actor"]:
+                    session = session_manager.get_or_create_session()
+                    session.cache_entity(guid, result)
+                
+                return json.dumps(result, indent=2)
+            except Exception as e:
+                logger.error(f"Failed to get entity details: {e}")
+                return json.dumps({"errors": [{"message": str(e)}]})
 
-    @mcp.prompt()
-    def generate_entity_search_query(entity_name: str, entity_domain: Optional[str] = None, entity_type: Optional[str] = None, target_account_id: Optional[int] = None) -> str:
-        """Generates a NerdGraph `entitySearch` query string condition to find an entity."""
-        conditions = []
-        if target_account_id:
-             try:
-                 conditions.append(f"accountId = {int(target_account_id)}")
-             except (ValueError, TypeError):
-                  return f"Error: Invalid target_account_id '{target_account_id}'"
-        elif config.ACCOUNT_ID:
-             # Default to configured account if one exists and none is specified
-             conditions.append(f"accountId = {config.ACCOUNT_ID}")
+        @app.tool()
+        async def get_entity_golden_signals(
+            guid: str,
+            duration: int = 3600
+        ) -> Dict[str, Any]:
+            """
+            Get golden signals (key metrics) for an entity
+            
+            Args:
+                guid: Entity GUID
+                duration: Time window in seconds (default: 1 hour)
+            
+            Returns:
+                Dictionary with golden signal values
+            """
+            if not entity_defs:
+                return {"error": "Entity definitions not available"}
+            
+            # First get entity type
+            entity_query = """
+            query($guid: EntityGuid!) {
+                actor {
+                    entity(guid: $guid) {
+                        type
+                        entityType
+                        name
+                        domain
+                    }
+                }
+            }
+            """
+            
+            try:
+                entity_result = await nerdgraph.query(entity_query, {"guid": guid})
+                entity = entity_result.get("actor", {}).get("entity")
+                
+                if not entity:
+                    return {"error": "Entity not found"}
+                
+                entity_type = entity["entityType"]
+                
+                # Get golden metrics definition
+                golden_metrics = entity_defs.get_golden_metrics(entity_type)
+                
+                if not golden_metrics:
+                    return {
+                        "entity_guid": guid,
+                        "entity_name": entity["name"],
+                        "entity_type": entity_type,
+                        "message": "No golden metrics defined for this entity type"
+                    }
+                
+                # For now, return the metric definitions
+                # In a full implementation, we would query each metric's value
+                return {
+                    "entity_guid": guid,
+                    "entity_name": entity["name"],
+                    "entity_type": entity_type,
+                    "duration": duration,
+                    "golden_metrics": golden_metrics
+                }
+                
+            except Exception as e:
+                logger.error(f"Failed to get golden signals: {e}")
+                return {"error": str(e)}
 
 
-        # Basic escaping for the name within the query string
-        escaped_name = entity_name.replace("'", "\\'")
-        conditions.append(f"name = '{escaped_name}'") # Use exact match for prompt generation? Or LIKE? Let's try exact first.
-
-        if entity_domain:
-            conditions.append(f"domain = '{entity_domain}'")
-        if entity_type:
-            conditions.append(f"type = '{entity_type}'")
-
-        search_query_string = " AND ".join(conditions)
-        # Return just the query *string* part
-        return search_query_string 
+# Keep legacy register function for backward compatibility
+def register(mcp: FastMCP):
+    """Legacy registration function - redirects to plugin"""
+    plugin = EntitiesPlugin()
+    # Create minimal services dict for legacy support
+    services = {
+        "nerdgraph": None,  # Would need to be provided
+        "entity_definitions": None,
+        "session_manager": None,
+        "account_id": os.getenv("NEW_RELIC_ACCOUNT_ID")
+    }
+    plugin.register(mcp, services) 

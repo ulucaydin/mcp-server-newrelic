@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  newrelic-mcp:
+    build: .
+    environment:
+      # Required: New Relic credentials
+      - NEW_RELIC_API_KEY=${NEW_RELIC_API_KEY}
+      - NEW_RELIC_ACCOUNT_ID=${NEW_RELIC_ACCOUNT_ID}
+      - NEW_RELIC_REGION=${NEW_RELIC_REGION:-US}
+      
+      # Optional: Server configuration
+      - MCP_TRANSPORT=${MCP_TRANSPORT:-stdio}
+      - HTTP_HOST=${HTTP_HOST:-0.0.0.0}
+      - HTTP_PORT=${HTTP_PORT:-3000}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      
+      # Optional: Entity definitions cache
+      - ENTITY_DEFINITIONS_UPDATE=${ENTITY_DEFINITIONS_UPDATE:-false}
+    
+    ports:
+      # Only needed for HTTP transport
+      - "${HTTP_PORT:-3000}:3000"
+    
+    volumes:
+      # Persist account configurations
+      - mcp_config:/home/mcp/.newrelic-mcp
+      
+      # Optional: Mount entity definitions cache
+      - entity_cache:/home/mcp/.newrelic-mcp/entity-definitions
+    
+    restart: unless-stopped
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "from core.account_manager import AccountManager; AccountManager().get_current_credentials()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Redis for caching (future enhancement)
+  # redis:
+  #   image: redis:7-alpine
+  #   volumes:
+  #     - redis_data:/data
+  #   restart: unless-stopped
+
+volumes:
+  mcp_config:
+    driver: local
+  entity_cache:
+    driver: local
+  # redis_data:
+  #   driver: local

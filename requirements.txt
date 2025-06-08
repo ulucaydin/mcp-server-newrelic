@@ -1,2 +1,20 @@
 fastmcp
-requests 
+requests
+httpx
+tenacity
+pyyaml
+gitpython
+cryptography
+aiohttp
+aiohttp-cors
+prometheus-client
+structlog
+python-json-logger
+asyncio-throttle
+psutil
+
+# Development dependencies
+pytest
+pytest-asyncio
+pytest-cov
+pytest-mock 

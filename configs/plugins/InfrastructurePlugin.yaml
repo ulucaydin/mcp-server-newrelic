@@ -1,0 +1,30 @@
+# Configuration for Infrastructure Plugin
+
+# Maximum number of hosts to return in list queries
+max_hosts: 500
+
+# Enable container monitoring features
+enable_container_monitoring: true
+
+# Enable Kubernetes monitoring features
+enable_kubernetes_monitoring: true
+
+# Process monitoring settings
+process_monitoring:
+  # Sample rate for process metrics (seconds)
+  sample_rate: 60
+  # Maximum number of processes to track per host
+  max_processes_per_host: 100
+
+# Disk monitoring thresholds
+disk_monitoring:
+  # Alert when disk usage exceeds this percentage
+  warning_threshold: 80
+  critical_threshold: 90
+  
+# Network monitoring settings
+network_monitoring:
+  # Interfaces to exclude from monitoring
+  exclude_interfaces:
+    - lo
+    - docker0

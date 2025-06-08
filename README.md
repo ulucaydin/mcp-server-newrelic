@@ -1,225 +1,329 @@
-# New Relic NerdGraph MCP Server
+# New Relic MCP Server
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) <!-- Add license if applicable -->
+A comprehensive Model Context Protocol (MCP) server that provides AI assistants (Claude, GitHub Copilot) with full access to New Relic's observability platform. Built with an advanced plugin architecture, this server enables natural language queries, automated monitoring, and intelligent insights across your entire stack.
 
-This repository provides a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for interacting with the [New Relic NerdGraph API](https://docs.newrelic.com/docs/apis/nerdgraph/get-started/introduction-new-relic-nerdgraph/). It allows MCP clients (like Claude Desktop) to use natural language or specific commands to query and interact with your New Relic account data and features.
+## 🚀 Features
 
-Built using the [fastmcp](https://github.com/jlowin/fastmcp) framework.
+### Core Capabilities
+- **Multi-Account Support**: Switch between New Relic accounts seamlessly
+- **Plugin Architecture**: Modular design with auto-discovery of feature plugins
+- **Async Operations**: High-performance async NerdGraph client with retries
+- **Session Management**: Stateful conversations with context preservation
+- **Entity Definitions**: Integrated golden metrics from New Relic's OSS definitions
+- **Telemetry**: Built-in observability for the MCP server itself
 
-## Features
+### Monitoring Domains
+- **APM**: Application performance metrics, transactions, deployments
+- **Infrastructure**: Hosts, containers, Kubernetes, processes, disk, network
+- **Entities**: Search, relationships, golden signals
+- **Alerts**: Policies, incidents, acknowledgments
+- **Logs**: Search, patterns, error analysis, tailing
+- **Synthetics**: Monitor management and results
+- **Metrics**: NRQL queries, custom dashboards
 
-This MCP server exposes various New Relic capabilities as tools and resources, including:
+### Access Methods
+- **AI Assistants**: Claude Desktop, Claude Code, GitHub Copilot
+- **CLI Tool**: Direct command execution for automation
+- **Docker**: Containerized deployment
+- **HTTP API**: REST endpoint for integrations (future)
 
-*   **Account Details:** Fetch basic information about the configured account.
-*   **Generic NerdGraph Queries:** Execute arbitrary NerdGraph queries.
-*   **NRQL Queries:** Run specific NRQL queries against your account data.
-*   **Entity Management:** Search for entities (Applications, Hosts, Monitors, etc.) and retrieve detailed information by GUID.
-*   **APM:** List Application Performance Monitoring (APM) applications.
-*   **Synthetics:** List Synthetic monitors and create simple browser monitors.
-*   **Alerts:** List alert policies, view open incidents, and acknowledge incidents.
+## 📋 Prerequisites
 
-## Prerequisites
+- Python 3.11+
+- New Relic account with API key
+- Claude Desktop or VS Code (for AI assistant integration)
 
-*   **Python:** Python 3.10+ recommended (as required by `fastmcp`).
-*   **pip:** Python package installer.
-*   **New Relic Account:** Access to a New Relic account.
-*   **New Relic User API Key:** A User API key is required for authentication. You can generate one [here](https://docs.newrelic.com/docs/apis/intro-apis/new-relic-api-keys/#user-api-key). **Keep this key secure!**
-*   **New Relic Account ID:** Your New Relic Account ID is needed for most operations. You can find it in the New Relic UI (often in the URL or account settings).
+## 🛠️ Installation
 
-## Setup & Installation
+### Quick Start
 
-1.  **Clone the Repository:**
-    ```bash
-    git clone <repository_url> # Replace <repository_url> with the actual URL
-    cd mcp-server-newrelic
-    ```
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/mcp-server-newrelic.git
+   cd mcp-server-newrelic
+   ```
 
-2.  **Install Dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-    This will install `fastmcp`, `requests`, and their dependencies.
+2. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-## Configuration
+3. **Configure credentials**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your New Relic API key and account ID
+   ```
 
-The server requires your New Relic API Key and Account ID to function. Configure these using environment variables **before** running the server:
+4. **Run the server**
+   ```bash
+   # Advanced server with all features
+   python main.py
+   
+   # Or use the simple server
+   python server_simple.py
+   
+   # Or with fastmcp CLI
+   fastmcp run server_simple.py:mcp
+   ```
+
+### Docker Installation
 
 ```bash
-# Replace YOUR_API_KEY and YOUR_ACCOUNT_ID with your actual credentials
-export NEW_RELIC_API_KEY="YOUR_API_KEY"
-export NEW_RELIC_ACCOUNT_ID="YOUR_ACCOUNT_ID"
+# Build and run with Docker Compose
+docker-compose up -d
+
+# Or build manually
+docker build -t newrelic-mcp .
+docker run -e NEW_RELIC_API_KEY=your-key -e NEW_RELIC_ACCOUNT_ID=your-id newrelic-mcp
 ```
 
-**Security Note:** Do not hardcode your API key in the source code. Using environment variables is the recommended approach. You can also use tools like `direnv` or place these `export` commands in your shell profile (`.zshrc`, `.bashrc`, etc.) for persistence, but be mindful of the security implications.
+## 🔧 Configuration
 
-## Running the Server
-
-Once configured, start the server using the `fastmcp` command-line tool:
+### Environment Variables
 
 ```bash
-fastmcp run server.py:mcp
+# Required
+NEW_RELIC_API_KEY=your-api-key
+NEW_RELIC_ACCOUNT_ID=your-account-id
+
+# Optional
+NEW_RELIC_REGION=US              # US or EU
+MCP_TRANSPORT=stdio              # stdio, http, or multi
+LOG_LEVEL=INFO                   # DEBUG, INFO, WARNING, ERROR
+SESSION_TTL_HOURS=24            # Session timeout
 ```
 
-*   `server.py`: The main entry point script.
-*   `mcp`: The name of the `FastMCP` instance created within `server.py`.
+### Multi-Account Setup
 
-The server will start, print registration messages, and listen for incoming MCP connections (typically on port 8000 by default, managed by `fastmcp`). You should see output similar to:
+Use the CLI to manage multiple accounts:
 
-```
-Using New Relic Account ID: YOUR_ACCOUNT_ID
-Registering common features...
-Registering entity features...
-Registering APM features...
-Registering Synthetics features...
-Registering Alerts features...
-Feature registration complete.
-INFO:     Started server process [XXXXX]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+```bash
+# Add accounts
+python cli.py config add-account --name prod --api-key KEY --account-id ID
+python cli.py config add-account --name staging --api-key KEY --account-id ID
+
+# Switch accounts
+python cli.py config use prod
+
+# List accounts
+python cli.py config list-accounts
 ```
 
-Leave this terminal window running.
+### Claude Desktop Configuration
 
-## Usage with MCP Clients
+Add to your Claude Desktop config:
 
-1.  **Start the MCP Server** (as described above).
-2.  **Restart your MCP Client** (e.g., Claude Desktop).
-3.  The client should automatically detect the running server and connect to it. You might see an indicator (like a 🔨 icon in Claude Desktop) showing that external tools are available.
-4.  You can now interact with your New Relic account using natural language or by directly invoking the tools listed below.
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-    *   **Natural Language Example:** "Show me my APM applications" or "List open critical incidents in account 1234567"
-    *   **Direct Invocation (if supported):** `list_apm_applications()` or `list_open_incidents(priority='CRITICAL', target_account_id=1234567)`
+```json
+{
+  "mcpServers": {
+    "newrelic": {
+      "command": "python",
+      "args": ["/path/to/mcp-server-newrelic/main.py"],
+      "env": {
+        "NEW_RELIC_API_KEY": "your-api-key",
+        "NEW_RELIC_ACCOUNT_ID": "your-account-id"
+      }
+    }
+  }
+}
+```
 
-## Available Tools & Resources
+### VS Code / GitHub Copilot Configuration
 
-The server provides the following functions accessible via the Model Context Protocol:
+Add to your VS Code settings:
+
+```json
+{
+  "github.copilot.chat.mcpServers": {
+    "newrelic": {
+      "url": "http://localhost:3000",
+      "token": "optional-auth-token"
+    }
+  }
+}
+```
+
+## 💻 CLI Usage
+
+The CLI provides direct access to all MCP tools:
+
+### Query Examples
+
+```bash
+# Run NRQL queries
+python cli.py query "SELECT count(*) FROM Transaction SINCE 1 hour ago"
+
+# Search entities
+python cli.py entities search --name "production" --type APPLICATION
+
+# Get entity details
+python cli.py entities details "ENTITY_GUID_HERE"
+
+# List APM applications
+python cli.py apm list
+
+# Get application metrics
+python cli.py apm metrics "My App" --time-range "SINCE 30 minutes ago"
+
+# Check infrastructure
+python cli.py infra hosts --tag environment=production
+python cli.py infra disk-usage --threshold 80
+
+# Search logs
+python cli.py logs search "error" --since "1 hour ago"
+python cli.py logs tail --query "level='ERROR'" --limit 50
+```
+
+### Advanced Usage
+
+```bash
+# Compare deployments
+python cli.py apm deployments compare "My App" --before 30 --after 30
+
+# Analyze error patterns
+python cli.py logs analyze-errors --group-by application,error.class
+
+# Get Kubernetes metrics
+python cli.py infra k8s --cluster "prod-cluster" --namespace "default"
+
+# Monitor processes
+python cli.py infra processes "web-server-01" --name "nginx" --top 10
+```
+
+## 🤖 AI Assistant Examples
+
+### With Claude
+
+```
+User: What's the current status of my production environment?
+
+Claude: I'll check your production environment status across multiple dimensions.
+
+[Uses search_entities, get_apm_metrics, list_open_incidents tools]
+
+Here's the current status:
+- 12 APM applications are running normally
+- Average response time: 245ms (↓ 5% from yesterday)  
+- Error rate: 0.3% (within normal range)
+- 2 minor incidents open (disk space warnings)
+- All synthetic monitors passing
+```
+
+### With GitHub Copilot
+
+```
+User: Help me debug why my API is slow
+
+Copilot: I'll analyze your API performance. Let me check the metrics.
+
+[Uses get_apm_transactions, search_logs, get_entity_golden_signals]
+
+I found the issue:
+- The /api/search endpoint has 3.2s average response time
+- Database queries are taking 2.8s (90% of request time)
+- Error logs show connection pool exhaustion
+- Recommendation: Increase connection pool size
+```
+
+## 📁 Architecture
+
+### Directory Structure
+
+```
+mcp-server-newrelic/
+├── main.py                 # Application entry point
+├── cli.py                  # CLI interface
+├── core/                   # Core components
+│   ├── account_manager.py  # Multi-account support
+│   ├── nerdgraph_client.py # Async GraphQL client
+│   ├── entity_definitions.py # Golden metrics cache
+│   ├── session_manager.py  # Conversation state
+│   ├── plugin_loader.py    # Plugin discovery
+│   └── telemetry.py       # Observability
+├── features/              # Feature plugins
+│   ├── common.py          # NRQL & NerdGraph tools
+│   ├── entities.py        # Entity search & details
+│   ├── apm.py            # APM monitoring
+│   ├── alerts.py         # Alerts & incidents
+│   ├── infrastructure.py # Infrastructure monitoring
+│   ├── logs.py           # Log analysis
+│   └── synthetics.py     # Synthetic monitoring
+└── transports/           # Communication layers
+    └── multi_transport.py # STDIO/HTTP support
+```
+
+### Plugin System
+
+Create new plugins by extending `PluginBase`:
+
+```python
+from core.plugin_loader import PluginBase
+
+class MyPlugin(PluginBase):
+    @staticmethod
+    def register(app: FastMCP, services: Dict[str, Any]):
+        @app.tool()
+        async def my_tool(param: str) -> Dict[str, Any]:
+            # Tool implementation
+            return {"result": "data"}
+```
+
+## 🔒 Security
+
+- API keys are stored server-side only
+- No credentials exposed to AI models
+- Support for environment variables and secure config files
+- Audit logging of all tool invocations
+- Rate limiting and error handling
+
+## 📊 Monitoring
+
+The server includes built-in telemetry:
+
+```bash
+# View server metrics
+python cli.py server metrics
+
+# Example output:
+{
+  "uptime_seconds": 3600,
+  "total_tool_calls": 150,
+  "tools": {
+    "run_nrql_query": {
+      "calls": 45,
+      "avg_duration_ms": 230,
+      "error_rate": 0.02
+    }
+  }
+}
+```
+
+## 🚧 Roadmap
+
+- [ ] WebSocket transport for real-time updates
+- [ ] Caching layer with Redis
+- [ ] Dashboard generation tools
+- [ ] Anomaly detection integration
+- [ ] Multi-tenant support
+- [ ] Prometheus metrics endpoint
+
+## 🤝 Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## 🙏 Acknowledgments
+
+- Built with [FastMCP](https://github.com/anthropics/fastmcp)
+- Uses [New Relic Entity Definitions](https://github.com/newrelic/entity-definitions)
+- Inspired by the MCP ecosystem
 
 ---
 
-### Common (`features/common.py`)
-
-*   **Tool: `query_nerdgraph`**
-    *   **Description:** Executes an arbitrary NerdGraph query. Use for operations not covered by specific tools.
-    *   **Arguments:**
-        *   `nerdgraph_query` (str): The GraphQL query string.
-        *   `variables` (Optional[Dict]): JSON dictionary of variables for the query.
-    *   **Returns:** JSON string of the query result.
-
-*   **Tool: `run_nrql_query`**
-    *   **Description:** Executes a NRQL query.
-    *   **Arguments:**
-        *   `nrql` (str): The NRQL query string (e.g., `"SELECT count(*) FROM Transaction TIMESERIES"`).
-        *   `target_account_id` (Optional[int]): Account ID to query (uses default from env if omitted).
-    *   **Returns:** JSON string of the NRQL result.
-
-*   **Resource: `get_account_details`**
-    *   **Description:** Provides basic details (ID, name) for the configured New Relic account.
-    *   **URI:** `newrelic://account_details`
-    *   **Returns:** JSON string containing account details (`{"data": {"id": ..., "name": ...}}`) or an error.
-
----
-
-### Entities (`features/entities.py`)
-
-*   **Tool: `search_entities`**
-    *   **Description:** Searches for New Relic entities based on criteria.
-    *   **Arguments:**
-        *   `name` (Optional[str]): Filter by name (fuzzy match).
-        *   `entity_type` (Optional[str]): Filter by type (e.g., `'APPLICATION'`, `'HOST'`).
-        *   `domain` (Optional[str]): Filter by domain (e.g., `'APM'`, `'INFRA'`).
-        *   `tags` (Optional[List[Dict]]): Filter by tags (e.g., `[{"key": "env", "value": "prod"}]`).
-        *   `target_account_id` (Optional[int]): Explicit account ID to search within.
-        *   `limit` (int): Max results (default 50).
-    *   **Returns:** JSON string of search results.
-
-*   **Resource: `get_entity_details`**
-    *   **Description:** Retrieves detailed information for a specific entity. Includes common fields and type-specific details for APM, Browser, Infra, Synthetics, Dashboards, etc.
-    *   **URI:** `newrelic://entity/{guid}` (replace `{guid}` with the entity GUID)
-    *   **Returns:** JSON string of entity details.
-
-*   **Prompt: `generate_entity_search_query`**
-    *   **Description:** Generates the `query` string condition part for the `entitySearch` NerdGraph field, useful for constructing search queries.
-    *   **Arguments:**
-        *   `entity_name` (str): Name to search for (exact match used in prompt generation).
-        *   `entity_domain` (Optional[str]): Domain to include in the query condition.
-        *   `entity_type` (Optional[str]): Type to include in the query condition.
-        *   `target_account_id` (Optional[int]): Account ID to include in the query condition.
-    *   **Returns:** String representing the search condition (e.g., `"accountId = 123 AND name = 'My App' AND domain = 'APM'"`).
-
----
-
-### APM (`features/apm.py`)
-
-*   **Tool: `list_apm_applications`**
-    *   **Description:** Lists APM applications.
-    *   **Arguments:**
-        *   `target_account_id` (Optional[int]): Account ID to query (uses default if omitted).
-    *   **Returns:** JSON string containing a list of APM applications.
-
----
-
-### Synthetics (`features/synthetics.py`)
-
-*   **Tool: `list_synthetics_monitors`**
-    *   **Description:** Lists Synthetic monitors.
-    *   **Arguments:**
-        *   `target_account_id` (Optional[int]): Account ID to query (uses default if omitted).
-    *   **Returns:** JSON string containing a list of Synthetic monitors.
-
-*   **Tool: `create_simple_browser_monitor`**
-    *   **Description:** Creates a basic Synthetics simple browser monitor.
-    *   **Arguments:**
-        *   `monitor_name` (str): Name for the new monitor.
-        *   `url` (str): URL to monitor.
-        *   `locations` (List[str]): List of public location labels (e.g., `["AWS_US_EAST_1"]`).
-        *   `period` (str): Check frequency (e.g., `"EVERY_15_MINUTES"`). Default: `"EVERY_15_MINUTES"`.
-        *   `status` (str): Initial status (`"ENABLED"` or `"DISABLED"`). Default: `"ENABLED"`.
-        *   `target_account_id` (Optional[int]): Account ID for creation (uses default if omitted).
-        *   `tags` (Optional[List[Dict]]): Optional tags (e.g., `[{"key": "team", "value": "ops"}]`).
-    *   **Returns:** JSON string with the result, including the new monitor's GUID.
-
-*   **Resource:** Synthetics monitor details can be retrieved using the `get_entity_details` resource with the monitor's GUID (`newrelic://entity/{monitor_guid}`).
-
----
-
-### Alerts (`features/alerts.py`)
-
-*   **Tool: `list_alert_policies`**
-    *   **Description:** Lists alert policies, optionally filtering by name.
-    *   **Arguments:**
-        *   `target_account_id` (Optional[int]): Account ID to query (uses default if omitted).
-        *   `policy_name_filter` (Optional[str]): Filter policies where name contains this string.
-    *   **Returns:** JSON string containing a list of alert policies.
-
-*   **Tool: `list_open_incidents`**
-    *   **Description:** Lists currently open alert incidents.
-    *   **Arguments:**
-        *   `target_account_id` (Optional[int]): Account ID to query (uses default if omitted).
-        *   `priority` (Optional[str]): Filter by priority (`'CRITICAL'`, `'WARNING'`).
-    *   **Returns:** JSON string containing a list of open incidents.
-
-*   **Tool: `acknowledge_alert_incident`**
-    *   **Description:** Acknowledges an open alert incident.
-    *   **Arguments:**
-        *   `incident_id` (int): The ID of the incident to acknowledge.
-        *   `target_account_id` (Optional[int]): Account ID where the incident occurred (uses default if omitted).
-        *   `message` (Optional[str]): Optional message for the acknowledgement.
-    *   **Returns:** JSON string with the result of the acknowledgement.
-
----
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues or pull requests.
-
-1.  Fork the repository.
-2.  Create a new branch (`git checkout -b feature/your-feature`).
-3.  Make your changes.
-4.  Commit your changes (`git commit -am 'Add some feature'`).
-5.  Push to the branch (`git push origin feature/your-feature`).
-6.  Open a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details (if a LICENSE file exists). 
+*Built with ❤️ for the New Relic community*
