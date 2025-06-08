@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Documentation search capability with local caching of New Relic docs
+- Proper plugin unloading with tool/resource cleanup
+- Connection pool reference counting for efficient resource management
+- Tests for documentation search, plugin unloading, and connection pooling
+
+### Changed
 - Comprehensive security layer with NRQL injection prevention
 - Secure API key storage with encryption
 - Connection pooling for improved performance

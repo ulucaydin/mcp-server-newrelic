@@ -39,8 +39,9 @@ class QueryComplexityAnalyzer:
 class NerdGraphClient:
     """Async NerdGraph client with retries, caching, and connection pooling"""
     
-    # Class-level connection pool
+    # Class-level connection pools and reference counts
     _connection_pools: Dict[str, httpx.AsyncClient] = {}
+    _pool_ref_counts: Dict[str, int] = {}
     _pool_lock = asyncio.Lock()
     
     def __init__(self, api_key: str, endpoint: str = "https://api.newrelic.com/graphql",
@@ -77,16 +78,16 @@ class NerdGraphClient:
     
     def _init_connection_pool(self):
         """Initialize or get connection pool for this endpoint"""
-        pool_key = f"{self.endpoint}:{self.api_key[:8]}"
+        self.pool_key = f"{self.endpoint}:{self.api_key[:8]}"
         
-        if pool_key not in self._connection_pools:
+        if self.pool_key not in self._connection_pools:
             limits = httpx.Limits(
                 max_keepalive_connections=self.max_connections,
                 max_connections=self.max_connections * 2,
                 keepalive_expiry=30.0
             )
             
-            self._connection_pools[pool_key] = httpx.AsyncClient(
+            self._connection_pools[self.pool_key] = httpx.AsyncClient(
                 headers={
                     "Api-Key": self.api_key,
                     "Content-Type": "application/json",
@@ -96,8 +97,10 @@ class NerdGraphClient:
                 timeout=httpx.Timeout(self.timeout),
                 limits=limits
             )
+            self._pool_ref_counts[self.pool_key] = 0
         
-        self.client = self._connection_pools[pool_key]
+        self.client = self._connection_pools[self.pool_key]
+        self._pool_ref_counts[self.pool_key] += 1
     
     @retry(
         stop=stop_after_attempt(3),
@@ -316,8 +319,14 @@ class NerdGraphClient:
     
     async def close(self):
         """Close the HTTP client gracefully"""
-        # Don't close shared connection pools
-        pass
+        async with self._pool_lock:
+            if hasattr(self, "pool_key") and self.pool_key in self._connection_pools:
+                self._pool_ref_counts[self.pool_key] -= 1
+                if self._pool_ref_counts[self.pool_key] <= 0:
+                    await self.client.aclose()
+                    del self._connection_pools[self.pool_key]
+                    del self._pool_ref_counts[self.pool_key]
+                    logger.debug(f"Closed connection pool for {self.pool_key}")
     
     @classmethod
     async def close_all_pools(cls):
@@ -326,6 +335,7 @@ class NerdGraphClient:
             for client in cls._connection_pools.values():
                 await client.aclose()
             cls._connection_pools.clear()
+            cls._pool_ref_counts.clear()
     
     def get_metrics(self) -> Dict[str, Any]:
         """Get client metrics"""

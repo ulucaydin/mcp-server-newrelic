@@ -248,6 +248,13 @@ class ServiceRegistry:
         """Check if service exists"""
         return service_name in self.services
     
+    def unregister(self, service_name: str):
+        """Remove a registered service"""
+        if service_name in self.services:
+            del self.services[service_name]
+            self.providers.pop(service_name, None)
+            logger.debug(f"Unregistered service {service_name}")
+    
     def check_requirements(self, required: List[str]) -> List[str]:
         """Check which required services are missing"""
         return [s for s in required if s not in self.services]
@@ -448,8 +455,27 @@ class EnhancedPluginManager:
         
         plugin = self.plugins[plugin_name]
         
-        # TODO: Implement tool/resource removal from FastMCP
-        # For now, just mark as unloaded
+        # Remove registered tools
+        for tool in plugin.provided_tools:
+            if hasattr(self.app, '_tools') and tool in self.app._tools:
+                del self.app._tools[tool]
+                logger.debug(f"Removed tool: {tool}")
+        
+        # Remove registered resources
+        for resource in plugin.provided_resources:
+            if hasattr(self.app, '_resources') and resource in self.app._resources:
+                del self.app._resources[resource]
+                logger.debug(f"Removed resource: {resource}")
+        
+        # Unregister provided services
+        for service_name in plugin.metadata.provides_services:
+            if self.service_registry.providers.get(service_name) == plugin_name:
+                self.service_registry.unregister(service_name)
+                logger.debug(f"Unregistered service: {service_name}")
+        
+        # Clear plugin's tracked items
+        plugin.provided_tools.clear()
+        plugin.provided_resources.clear()
         plugin.state = "unloaded"
         
         logger.info(f"Unloaded plugin: {plugin_name}")

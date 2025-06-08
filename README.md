@@ -11,6 +11,7 @@ A comprehensive Model Context Protocol (MCP) server that provides AI assistants 
 - **Session Management**: Stateful conversations with context preservation
 - **Entity Definitions**: Integrated golden metrics from New Relic's OSS definitions
 - **Telemetry**: Built-in observability for the MCP server itself
+- **Documentation Search**: Local cache of New Relic docs for instant answers
 
 ### Monitoring Domains
 - **APM**: Application performance metrics, transactions, deployments
@@ -250,7 +251,8 @@ mcp-server-newrelic/
 │   ├── alerts.py         # Alerts & incidents
 │   ├── infrastructure.py # Infrastructure monitoring
 │   ├── logs.py           # Log analysis
-│   └── synthetics.py     # Synthetic monitoring
+│   ├── synthetics.py     # Synthetic monitoring
+│   └── docs.py           # Documentation search
 └── transports/           # Communication layers
     └── multi_transport.py # STDIO/HTTP support
 ```

@@ -362,6 +362,10 @@ def cached(
     return decorator
 
 
+# Backwards compatibility
+cache_result = cached
+
+
 async def _invalidate_cache(cache: CacheBackend, prefix: str, *args, **kwargs):
     """Invalidate cached entries for specific arguments"""
     if not cache:

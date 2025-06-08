@@ -27,13 +27,13 @@ class EntitiesPlugin(PluginBase):
 
         @app.tool()
         async def search_entities(
-        name: Optional[str] = None,
-        entity_type: Optional[str] = None,
-        domain: Optional[str] = None,
-        tags: Optional[List[Dict[str, str]]] = None, # Example: [{"key": "env", "value": "production"}]
-        target_account_id: Optional[int] = None, # Allow overriding account ID for search
-        limit: int = 50
-    ) -> str:
+            name: Optional[str] = None,
+            entity_type: Optional[str] = None,
+            domain: Optional[str] = None,
+            tags: Optional[List[Dict[str, str]]] = None,  # Example: [{"key": "env", "value": "production"}]
+            target_account_id: Optional[int] = None,  # Allow overriding account ID for search
+            limit: int = 50
+        ) -> str:
         """
         Searches for New Relic entities based on various criteria.
 
