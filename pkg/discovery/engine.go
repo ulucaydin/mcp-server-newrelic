@@ -62,11 +62,9 @@ func NewEngine(config *Config) (*Engine, error) {
 // initializeComponents initializes all engine components
 func (e *Engine) initializeComponents() error {
 	// Initialize NRDB client
-	nrdbClient, err := NewNRDBClient(e.config.NRDB)
-	if err != nil {
-		return fmt.Errorf("creating NRDB client: %w", err)
-	}
-	e.nrdb = nrdbClient
+	// In real implementation, would use the nrdb package
+	// For now, using a placeholder
+	e.nrdb = createNRDBClient(e.config.NRDB)
 	
 	// Initialize cache
 	if e.config.Cache.Enabled {
@@ -485,5 +483,23 @@ func (e *Engine) discoverSingleSchema(ctx context.Context, eventType string) (Sc
 	return schema, nil
 }
 
-// Helper methods implementations would continue...
-// (truncated for brevity, but would include all the helper methods referenced above)
+// SetNRDBClient sets the NRDB client for testing
+func (e *Engine) SetNRDBClient(client NRDBClient) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.nrdb = client
+}
+
+// SetCache sets the cache for testing
+func (e *Engine) SetCache(cache Cache) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.cache = cache
+}
+
+// LoadConfig loads configuration from a file
+func LoadConfig(path string) (*Config, error) {
+	// TODO: Implement config loading from YAML/JSON
+	// For now, return default config
+	return DefaultConfig(), nil
+}

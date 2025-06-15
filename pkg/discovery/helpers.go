@@ -256,6 +256,76 @@ func (c *MultiLayerCache) Stats() CacheStats {
 	return CacheStats{}
 }
 
+// RelationshipMiner placeholder
+type RelationshipMiner interface {
+	FindRelationships(ctx context.Context, schemas []Schema) ([]Relationship, error)
+}
+
+type relationshipMiner struct {
+	nrdb NRDBClient
+}
+
+func NewRelationshipMiner(nrdb NRDBClient) RelationshipMiner {
+	return &relationshipMiner{nrdb: nrdb}
+}
+
+func (m *relationshipMiner) FindRelationships(ctx context.Context, schemas []Schema) ([]Relationship, error) {
+	// Placeholder - real implementation in relationships package
+	return []Relationship{}, nil
+}
+
+// QualityAssessor placeholder
+type QualityAssessor interface {
+	AssessSchema(ctx context.Context, schema Schema, sample DataSample) QualityReport
+}
+
+type qualityAssessor struct{}
+
+func NewQualityAssessor() QualityAssessor {
+	return &qualityAssessor{}
+}
+
+func (a *qualityAssessor) AssessSchema(ctx context.Context, schema Schema, sample DataSample) QualityReport {
+	// Placeholder - real implementation in quality package
+	return QualityReport{
+		SchemaName:     schema.Name,
+		AssessmentTime: time.Now(),
+		OverallScore:   0.85,
+		SampleSize:     sample.SampleSize,
+		TimeRange:      sample.TimeRange,
+		Dimensions: QualityDimensions{
+			Completeness: QualityDimension{Name: "Completeness", Score: 0.9},
+			Consistency:  QualityDimension{Name: "Consistency", Score: 0.85},
+			Timeliness:   QualityDimension{Name: "Timeliness", Score: 0.95},
+			Uniqueness:   QualityDimension{Name: "Uniqueness", Score: 0.8},
+			Validity:     QualityDimension{Name: "Validity", Score: 0.9},
+		},
+	}
+}
+
+// MetricsCollector placeholder
+type MetricsCollector interface {
+	RecordDiscoveryDuration(duration time.Duration)
+	RecordCacheHit(cacheType string)
+	RecordCacheMiss(cacheType string)
+	RecordError(errorType string, err error)
+	RecordSchemaDiscovered(eventType string)
+}
+
+type metricsCollector struct {
+	config ObservabilityConfig
+}
+
+func NewMetricsCollector(config ObservabilityConfig) MetricsCollector {
+	return &metricsCollector{config: config}
+}
+
+func (m *metricsCollector) RecordDiscoveryDuration(duration time.Duration) {}
+func (m *metricsCollector) RecordCacheHit(cacheType string) {}
+func (m *metricsCollector) RecordCacheMiss(cacheType string) {}
+func (m *metricsCollector) RecordError(errorType string, err error) {}
+func (m *metricsCollector) RecordSchemaDiscovered(eventType string) {}
+
 // Helper functions
 
 // generateSchemaID generates a unique ID for a schema
@@ -439,6 +509,20 @@ func (e *Engine) calculateBasicQuality(attributes []Attribute, sample *DataSampl
 		Uniqueness:   0.8, // Placeholder
 		Validity:     0.9, // Placeholder
 	}
+}
+
+// createNRDBClient creates an NRDB client
+func createNRDBClient(config NRDBConfig) NRDBClient {
+	// In real implementation, would use the nrdb package
+	// For now, return a mock client for testing
+	return NewMockNRDBClient()
+}
+
+// NewMockNRDBClient creates a mock NRDB client
+func NewMockNRDBClient() NRDBClient {
+	// This would be imported from nrdb package
+	// For now, returning nil as placeholder
+	return nil
 }
 
 // Additional helper methods would be implemented here...

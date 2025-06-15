@@ -1,0 +1,628 @@
+openapi: 3.0.3
+info:
+  title: New Relic UDS Interface Layer API
+  description: |
+    REST API for the New Relic Unified Data Service (UDS) Interface Layer.
+    This API provides access to discovery, pattern analysis, query generation,
+    and dashboard creation capabilities.
+  version: 1.0.0
+  contact:
+    name: UDS Team
+    email: uds-team@newrelic.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+  - url: https://uds.newrelic.com/api/v1
+    description: Production server
+
+tags:
+  - name: Discovery
+    description: Schema discovery and profiling operations
+  - name: Patterns
+    description: Pattern analysis and anomaly detection
+  - name: Query
+    description: NRQL query generation and optimization
+  - name: Dashboard
+    description: Dashboard creation and management
+  - name: Health
+    description: Service health and status
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Check service health
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /discovery/schemas:
+    get:
+      tags:
+        - Discovery
+      summary: List available schemas
+      operationId: listSchemas
+      parameters:
+        - $ref: '#/components/parameters/EventTypeFilter'
+        - $ref: '#/components/parameters/MinRecordCount'
+        - $ref: '#/components/parameters/MaxSchemas'
+        - $ref: '#/components/parameters/IncludeMetadata'
+      responses:
+        '200':
+          description: List of discovered schemas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schemas:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Schema'
+                  metadata:
+                    $ref: '#/components/schemas/DiscoveryMetadata'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /discovery/schemas/{eventType}:
+    get:
+      tags:
+        - Discovery
+      summary: Get detailed schema profile
+      operationId: getSchemaProfile
+      parameters:
+        - name: eventType
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Event type name
+        - name: depth
+          in: query
+          schema:
+            type: string
+            enum: [basic, standard, full]
+            default: standard
+          description: Profile depth level
+      responses:
+        '200':
+          description: Detailed schema profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaProfile'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /discovery/relationships:
+    post:
+      tags:
+        - Discovery
+      summary: Find relationships between schemas
+      operationId: findRelationships
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                schemas:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 2
+                  description: Schema names to analyze
+                options:
+                  type: object
+                  properties:
+                    maxRelationships:
+                      type: integer
+                      default: 10
+                    minConfidence:
+                      type: number
+                      format: float
+                      minimum: 0
+                      maximum: 1
+                      default: 0.7
+              required:
+                - schemas
+      responses:
+        '200':
+          description: Discovered relationships
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  relationships:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Relationship'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /discovery/quality/{eventType}:
+    get:
+      tags:
+        - Discovery
+      summary: Assess data quality for a schema
+      operationId: assessQuality
+      parameters:
+        - name: eventType
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: timeRange
+          in: query
+          schema:
+            type: string
+            default: 24h
+          description: Time range for quality assessment
+      responses:
+        '200':
+          description: Quality assessment report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReport'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /patterns/analyze:
+    post:
+      tags:
+        - Patterns
+      summary: Analyze patterns in data
+      operationId: analyzePatterns
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatternAnalysisRequest'
+      responses:
+        '200':
+          description: Pattern analysis results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatternAnalysisResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /query/generate:
+    post:
+      tags:
+        - Query
+      summary: Generate NRQL query from natural language
+      operationId: generateQuery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prompt:
+                  type: string
+                  description: Natural language query description
+                context:
+                  type: object
+                  properties:
+                    schemas:
+                      type: array
+                      items:
+                        type: string
+                    timeRange:
+                      type: string
+                    examples:
+                      type: array
+                      items:
+                        type: string
+              required:
+                - prompt
+      responses:
+        '200':
+          description: Generated NRQL query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneratedQuery'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /dashboard/create:
+    post:
+      tags:
+        - Dashboard
+      summary: Create a dashboard from specifications
+      operationId: createDashboard
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DashboardSpec'
+      responses:
+        '201':
+          description: Dashboard created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  parameters:
+    EventTypeFilter:
+      name: eventType
+      in: query
+      schema:
+        type: string
+      description: Filter by event type pattern
+
+    MinRecordCount:
+      name: minRecordCount
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+      description: Minimum record count threshold
+
+    MaxSchemas:
+      name: maxSchemas
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+      description: Maximum number of schemas to return
+
+    IncludeMetadata:
+      name: includeMetadata
+      in: query
+      schema:
+        type: boolean
+        default: false
+      description: Include additional metadata
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+      required:
+        - error
+        - message
+
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        version:
+          type: string
+        uptime:
+          type: string
+        components:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              status:
+                type: string
+              message:
+                type: string
+
+    Schema:
+      type: object
+      properties:
+        name:
+          type: string
+        eventType:
+          type: string
+        attributes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attribute'
+        recordCount:
+          type: integer
+          format: int64
+        sampleCount:
+          type: integer
+        quality:
+          $ref: '#/components/schemas/QualityMetrics'
+        lastAnalyzed:
+          type: string
+          format: date-time
+
+    Attribute:
+      type: object
+      properties:
+        name:
+          type: string
+        dataType:
+          type: string
+          enum: [string, numeric, boolean, timestamp, object, array]
+        nullRatio:
+          type: number
+          format: float
+        cardinality:
+          type: integer
+        semanticType:
+          type: string
+        patterns:
+          type: array
+          items:
+            $ref: '#/components/schemas/Pattern'
+
+    Pattern:
+      type: object
+      properties:
+        type:
+          type: string
+        confidence:
+          type: number
+          format: float
+        description:
+          type: string
+        examples:
+          type: array
+          items:
+            type: string
+
+    SchemaProfile:
+      allOf:
+        - $ref: '#/components/schemas/Schema'
+        - type: object
+          properties:
+            samples:
+              type: array
+              items:
+                type: object
+            statistics:
+              type: object
+            relationships:
+              type: array
+              items:
+                $ref: '#/components/schemas/Relationship'
+
+    Relationship:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [join, correlation, temporal, hierarchy, derived]
+        sourceSchema:
+          type: string
+        targetSchema:
+          type: string
+        sourceAttribute:
+          type: string
+        targetAttribute:
+          type: string
+        confidence:
+          type: number
+          format: float
+        evidence:
+          type: array
+          items:
+            type: object
+
+    QualityMetrics:
+      type: object
+      properties:
+        overallScore:
+          type: number
+          format: float
+        completeness:
+          type: number
+          format: float
+        consistency:
+          type: number
+          format: float
+        timeliness:
+          type: number
+          format: float
+        uniqueness:
+          type: number
+          format: float
+        validity:
+          type: number
+          format: float
+
+    QualityReport:
+      type: object
+      properties:
+        schemaName:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        metrics:
+          $ref: '#/components/schemas/QualityMetrics'
+        issues:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              severity:
+                type: string
+              attribute:
+                type: string
+              description:
+                type: string
+        recommendations:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              priority:
+                type: string
+              description:
+                type: string
+              impact:
+                type: string
+
+    DiscoveryMetadata:
+      type: object
+      properties:
+        totalSchemas:
+          type: integer
+        filteredCount:
+          type: integer
+        executionTime:
+          type: string
+        cacheHit:
+          type: boolean
+
+    PatternAnalysisRequest:
+      type: object
+      properties:
+        eventType:
+          type: string
+        attributes:
+          type: array
+          items:
+            type: string
+        timeRange:
+          type: string
+        options:
+          type: object
+      required:
+        - eventType
+
+    PatternAnalysisResult:
+      type: object
+      properties:
+        patterns:
+          type: array
+          items:
+            type: object
+        anomalies:
+          type: array
+          items:
+            type: object
+        insights:
+          type: array
+          items:
+            type: object
+
+    GeneratedQuery:
+      type: object
+      properties:
+        nrql:
+          type: string
+        explanation:
+          type: string
+        warnings:
+          type: array
+          items:
+            type: string
+        alternatives:
+          type: array
+          items:
+            type: object
+            properties:
+              nrql:
+                type: string
+              description:
+                type: string
+
+    DashboardSpec:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        widgets:
+          type: array
+          items:
+            type: object
+        layout:
+          type: object
+      required:
+        - name
+        - widgets
+
+    Dashboard:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
