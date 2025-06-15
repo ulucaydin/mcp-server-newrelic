@@ -4,22 +4,36 @@
 
 # Default target
 help:
-	@echo "Universal Data Synthesizer - Discovery Core"
+	@echo "Universal Data Synthesizer (UDS)"
 	@echo ""
-	@echo "Available targets:"
-	@echo "  build         Build the discovery binary"
-	@echo "  test          Run unit tests"
-	@echo "  bench         Run benchmarks"
-	@echo "  lint          Run golangci-lint"
-	@echo "  coverage      Generate test coverage report"
-	@echo "  clean         Clean build artifacts"
-	@echo "  install-tools Install development tools"
+	@echo "Build targets:"
+	@echo "  build             Build all binaries"
+	@echo "  build-discovery   Build discovery engine"
+	@echo "  build-mcp         Build MCP server"
+	@echo ""
+	@echo "Run targets:"
+	@echo "  run-discovery     Run discovery engine"
+	@echo "  run-mcp           Run MCP server"
+	@echo ""
+	@echo "Development targets:"
+	@echo "  test              Run unit tests"
+	@echo "  bench             Run benchmarks"
+	@echo "  lint              Run golangci-lint"
+	@echo "  coverage          Generate test coverage report"
+	@echo "  clean             Clean build artifacts"
+	@echo "  install-tools     Install development tools"
 	@echo ""
 
-# Build the discovery binary
-build:
-	@echo "Building discovery core..."
-	@go build -o bin/discovery cmd/discovery/main.go
+# Build binaries
+build: build-discovery build-mcp
+
+build-discovery:
+	@echo "Building discovery engine..."
+	@go build -o bin/uds-discovery cmd/uds-discovery/main.go
+
+build-mcp:
+	@echo "Building MCP server..."
+	@go build -o bin/uds-mcp cmd/uds-mcp/main.go
 
 # Run tests
 test:
@@ -55,6 +69,11 @@ install-tools:
 	@echo "Tools installed!"
 
 # Run the discovery server
-run: build
+run-discovery: build-discovery
 	@echo "Running discovery server..."
-	@./bin/discovery
+	@./bin/uds-discovery
+
+# Run the MCP server
+run-mcp: build-mcp
+	@echo "Running MCP server..."
+	@./bin/uds-mcp

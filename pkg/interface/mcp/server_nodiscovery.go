@@ -4,10 +4,8 @@ package mcp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
-	"time"
 )
 
 // Server implements the Model Context Protocol server (without discovery dependency)
@@ -135,11 +133,13 @@ func (s *Server) GetInfo() map[string]interface{} {
 func (s *Server) createTransport() (Transport, error) {
 	switch s.config.TransportType {
 	case TransportStdio:
-		return NewStdioTransport()
+		return NewStdioTransport(), nil
 	case TransportHTTP:
-		return NewHTTPTransport(s.config.HTTPHost, s.config.HTTPPort)
+		addr := fmt.Sprintf("%s:%d", s.config.HTTPHost, s.config.HTTPPort)
+		return NewHTTPTransport(addr), nil
 	case TransportSSE:
-		return NewSSETransport(s.config.HTTPHost, s.config.HTTPPort)
+		addr := fmt.Sprintf("%s:%d", s.config.HTTPHost, s.config.HTTPPort)
+		return NewSSETransport(addr), nil
 	default:
 		return nil, fmt.Errorf("unsupported transport type: %s", s.config.TransportType)
 	}
@@ -173,9 +173,9 @@ func (s *Server) registerBuiltinTools() {
 				"session_id": {
 					Type:        "string",
 					Description: "Session ID to end",
-					Required:    true,
 				},
 			},
+			Required: []string{"session_id"},
 		},
 		Handler: func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 			sessionID, _ := params["session_id"].(string)

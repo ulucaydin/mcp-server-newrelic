@@ -55,7 +55,7 @@ go test ./pkg/discovery/...
 go test -bench=. ./pkg/discovery/...
 
 # Build
-go build ./cmd/discovery
+go build ./cmd/uds-discovery
 
 # Lint
 golangci-lint run

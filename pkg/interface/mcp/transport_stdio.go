@@ -71,12 +71,6 @@ func (t *StdioTransport) Send(message []byte) error {
 // Close closes the transport
 func (t *StdioTransport) Close() error {
 	close(t.done)
-	
-	// Close stdin if it's a closeable type
-	if closer, ok := t.reader.(io.Closer); ok {
-		return closer.Close()
-	}
-	
 	return nil
 }
 

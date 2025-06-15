@@ -92,6 +92,16 @@ func (p *WorkerPool) ExecuteBatch(ctx context.Context, tasks []interface{}, fn f
 	return results
 }
 
+// ExecuteBatchTyped executes a batch of typed tasks
+func (p *WorkerPool) ExecuteBatchTyped(ctx context.Context, tasks []DiscoveryTask, fn func(context.Context, interface{}) (interface{}, error)) []BatchResult {
+	// Convert to interface slice
+	interfaceTasks := make([]interface{}, len(tasks))
+	for i, task := range tasks {
+		interfaceTasks[i] = task
+	}
+	return p.ExecuteBatch(ctx, interfaceTasks, fn)
+}
+
 // ActiveWorkers returns the number of active workers
 func (p *WorkerPool) ActiveWorkers() int {
 	return int(p.activeJobs)

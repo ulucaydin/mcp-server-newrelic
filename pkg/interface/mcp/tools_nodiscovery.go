@@ -4,7 +4,6 @@ package mcp
 
 import (
 	"context"
-	"fmt"
 )
 
 // registerDiscoveryTools registers discovery-related tools (no-op for testing)
@@ -66,14 +65,13 @@ func (s *Server) registerDiscoveryTools() {
 				"schema": {
 					Type:        "string",
 					Description: "Schema name",
-					Required:    true,
 				},
 				"attribute": {
 					Type:        "string",
 					Description: "Attribute name",
-					Required:    true,
 				},
 			},
+			Required: []string{"schema", "attribute"},
 		},
 		Handler: func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 			schema := params["schema"].(string)

@@ -186,7 +186,7 @@ func (e *Engine) DiscoverSchemas(ctx context.Context, filter DiscoveryFilter) ([
 	}
 	
 	// Execute parallel discovery
-	results := e.workerPool.ExecuteBatch(ctx, tasks, func(ctx context.Context, task interface{}) (interface{}, error) {
+	results := e.workerPool.ExecuteBatchTyped(ctx, tasks, func(ctx context.Context, task interface{}) (interface{}, error) {
 		dt := task.(DiscoveryTask)
 		return e.discoverSingleSchema(ctx, dt.EventType)
 	})

@@ -81,7 +81,7 @@ This document tracks the implementation progress of the Universal Data Synthesiz
 ##### Day 1 Progress:
 - ✅ **Project Structure Setup**
   - Created Go module with proper package structure
-  - Set up directory hierarchy: pkg/discovery, cmd/discovery, internal/testutil
+  - Set up directory hierarchy: pkg/discovery, cmd/uds-discovery, internal/testutil
   - Created Makefile with build, test, lint targets
 
 - ✅ **Core Types & Interfaces**
