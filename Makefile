@@ -35,22 +35,52 @@ build-mcp:
 	@echo "Building MCP server..."
 	@go build -o bin/uds-mcp cmd/uds-mcp/main.go
 
-# Run tests
+# Testing targets
+.PHONY: test test-unit test-integration test-benchmarks test-coverage test-coverage-html test-short test-race
+
+# Run all tests
 test:
-	@echo "Running tests..."
+	@echo "Running all tests..."
+	@go test -v -race ./...
+
+# Run unit tests only
+test-unit:
+	@echo "Running unit tests..."
 	@go test -v -race ./pkg/...
 
-# Run tests with coverage
-coverage:
-	@echo "Generating coverage report..."
-	@go test -coverprofile=coverage.out ./pkg/...
-	@go tool cover -html=coverage.out -o coverage.html
-	@echo "Coverage report generated: coverage.html"
+# Run integration tests
+test-integration:
+	@echo "Running integration tests..."
+	@go test -v -race ./tests/integration/... -tags=integration
 
-# Run benchmarks
-bench:
-	@echo "Running benchmarks..."
-	@go test -bench=. -benchmem ./pkg/...
+# Run benchmark tests
+test-benchmarks:
+	@echo "Running benchmark tests..."
+	@go test -bench=. -benchmem -run=^$$ ./tests/benchmarks/...
+
+# Run tests with coverage
+test-coverage:
+	@echo "Running tests with coverage..."
+	@./scripts/test-coverage.sh
+
+# Open coverage report in browser
+test-coverage-html: test-coverage
+	@echo "Opening coverage report..."
+	@open coverage/coverage.html || xdg-open coverage/coverage.html
+
+# Run short tests only
+test-short:
+	@echo "Running short tests..."
+	@go test -v -short ./...
+
+# Run tests with race detector
+test-race:
+	@echo "Running tests with race detector..."
+	@go test -race ./...
+
+# Legacy aliases
+coverage: test-coverage
+bench: test-benchmarks
 
 # Run linter
 lint:
@@ -66,7 +96,28 @@ clean:
 install-tools:
 	@echo "Installing development tools..."
 	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	@go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+	@go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 	@echo "Tools installed!"
+
+# Generate protobuf files
+.PHONY: proto proto-go proto-python
+
+proto: proto-go proto-python
+
+proto-go:
+	@echo "Generating Go protobuf files..."
+	@protoc --go_out=. --go_opt=paths=source_relative \
+		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
+		pkg/intelligence/proto/intelligence.proto
+
+proto-python:
+	@echo "Generating Python protobuf files..."
+	@python -m grpc_tools.protoc \
+		-I. \
+		--python_out=. \
+		--grpc_python_out=. \
+		pkg/intelligence/proto/intelligence.proto
 
 # Run the discovery server
 run-discovery: build-discovery

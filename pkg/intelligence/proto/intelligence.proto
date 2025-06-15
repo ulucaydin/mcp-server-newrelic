@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package intelligence;
+
+option go_package = "github.com/anthropics/mcp-server-newrelic/pkg/intelligence/proto";
+
+// Intelligence service provides ML/AI capabilities
+service IntelligenceService {
+    // Health check
+    rpc HealthCheck(Empty) returns (HealthResponse);
+    
+    // Pattern detection
+    rpc AnalyzePatterns(AnalyzePatternsRequest) returns (AnalyzePatternsResponse);
+    
+    // Query generation
+    rpc GenerateQuery(GenerateQueryRequest) returns (GenerateQueryResponse);
+    
+    // Visualization recommendations
+    rpc RecommendCharts(RecommendChartsRequest) returns (RecommendChartsResponse);
+    
+    // Dashboard layout optimization
+    rpc OptimizeLayout(OptimizeLayoutRequest) returns (OptimizeLayoutResponse);
+}
+
+// Empty message for requests with no parameters
+message Empty {}
+
+// Health check response
+message HealthResponse {
+    bool healthy = 1;
+    string version = 2;
+    map<string, string> components = 3;
+}
+
+// Pattern analysis request
+message AnalyzePatternsRequest {
+    string data = 1;  // JSON encoded data
+    string columns = 2;  // Optional: specific columns to analyze
+    string context = 3;  // Optional: analysis context
+}
+
+// Pattern analysis response
+message AnalyzePatternsResponse {
+    string result = 1;  // JSON encoded results
+    string error = 2;   // Error message if any
+}
+
+// Query generation request
+message GenerateQueryRequest {
+    string natural_query = 1;  // Natural language query
+    string context = 2;        // JSON encoded query context
+}
+
+// Query generation response
+message GenerateQueryResponse {
+    string result = 1;  // JSON encoded query result
+    string error = 2;   // Error message if any
+}
+
+// Chart recommendation request
+message RecommendChartsRequest {
+    string data_shape = 1;  // JSON encoded data shape
+    string context = 2;     // Optional: recommendation context
+}
+
+// Chart recommendation response
+message RecommendChartsResponse {
+    string result = 1;  // JSON encoded recommendations
+    string error = 2;   // Error message if any
+}
+
+// Layout optimization request
+message OptimizeLayoutRequest {
+    string widgets = 1;      // JSON encoded widget list
+    string constraints = 2;  // JSON encoded constraints
+    string strategy = 3;     // Layout strategy
+}
+
+// Layout optimization response
+message OptimizeLayoutResponse {
+    string result = 1;  // JSON encoded layout
+    string error = 2;   // Error message if any
+}

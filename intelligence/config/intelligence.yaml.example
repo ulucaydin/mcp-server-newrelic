@@ -1,0 +1,115 @@
+# Intelligence Engine Configuration
+# Copy this file to intelligence.yaml and customize as needed
+
+# General settings
+log_level: INFO
+enable_metrics: true
+metrics_port: 8080
+
+# Pattern Detection Configuration
+pattern_detection:
+  min_confidence: 0.7
+  enable_caching: true
+  cache_ttl_seconds: 3600
+  
+  # Feature toggles
+  enable_statistical: true
+  enable_timeseries: true
+  enable_anomaly: true
+  enable_correlation: true
+  
+  # Statistical detector settings
+  statistical_config:
+    outlier_method: iqr  # iqr or zscore
+    distribution_tests:
+      - shapiro
+      - kstest
+    missing_data_threshold: 0.1
+  
+  # Time series detector settings
+  timeseries_config:
+    stationarity_alpha: 0.05
+    seasonality_methods:
+      - fft
+      - acf
+    min_seasonality_strength: 0.5
+    trend_methods:
+      - linear
+      - polynomial
+  
+  # Anomaly detector settings
+  anomaly_config:
+    ensemble_methods:
+      - iforest
+      - lof
+      - knn
+    contamination: 0.1  # Expected anomaly rate
+    n_estimators: 100
+    n_neighbors: 20
+  
+  # Correlation detector settings
+  correlation_config:
+    min_correlation: 0.5
+    check_nonlinear: true
+    max_lag: 50
+    mutual_info_neighbors: 3
+
+# Query Generation Configuration
+query_generation:
+  cache_size: 100
+  history_size: 1000
+  
+  # Parser settings
+  parser_config:
+    confidence_threshold: 0.6
+    enable_spell_correction: true
+    spacy_model: en_core_web_sm
+    max_query_length: 500
+  
+  # Builder settings
+  builder_config:
+    default_limit: 100
+    max_limit: 10000
+    default_time_range: "1 hour ago"
+    max_time_range_days: 90
+  
+  # Optimizer settings
+  optimizer_config:
+    performance_mode: balanced  # cost, speed, or balanced
+    aggressive: false
+    cost_threshold: 100.0
+    cost_model:
+      base_cost_per_gb: 0.25
+      timeseries_multiplier: 1.5
+      facet_multiplier: 1.2
+      percentile_multiplier: 2.0
+
+# Visualization Configuration
+visualization:
+  # Data shape analyzer
+  shape_analyzer_config:
+    sample_size: 10000
+    correlation_threshold: 0.5
+    outlier_method: iqr
+    cardinality_threshold: 0.5
+  
+  # Chart recommender
+  recommender_config:
+    max_recommendations: 5
+    confidence_boost_preferred: 0.1
+    confidence_penalty_large_data: 0.2
+  
+  # Layout optimizer
+  layout_config:
+    default_grid_columns: 4
+    optimization_iterations: 100
+    annealing_temperature: 1.0
+    cooling_rate: 0.95
+
+# gRPC Server Configuration
+grpc:
+  host: "0.0.0.0"
+  port: 50051
+  max_workers: 10
+  max_message_size: 104857600  # 100MB
+  keepalive_time_ms: 30000
