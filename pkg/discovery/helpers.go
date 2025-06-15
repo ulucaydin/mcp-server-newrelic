@@ -256,75 +256,17 @@ func (c *MultiLayerCache) Stats() CacheStats {
 	return CacheStats{}
 }
 
-// RelationshipMiner placeholder
-type RelationshipMiner interface {
-	FindRelationships(ctx context.Context, schemas []Schema) ([]Relationship, error)
-}
+// RelationshipMiner interface is defined in interfaces.go
 
-type relationshipMiner struct {
-	nrdb NRDBClient
-}
+// RelationshipMiner implementation moved to factory.go
 
-func NewRelationshipMiner(nrdb NRDBClient) RelationshipMiner {
-	return &relationshipMiner{nrdb: nrdb}
-}
+// QualityAssessor interface is defined in interfaces.go
 
-func (m *relationshipMiner) FindRelationships(ctx context.Context, schemas []Schema) ([]Relationship, error) {
-	// Placeholder - real implementation in relationships package
-	return []Relationship{}, nil
-}
+// QualityAssessor implementation moved to factory.go
 
-// QualityAssessor placeholder
-type QualityAssessor interface {
-	AssessSchema(ctx context.Context, schema Schema, sample DataSample) QualityReport
-}
+// MetricsCollector interface is defined in interfaces.go
 
-type qualityAssessor struct{}
-
-func NewQualityAssessor() QualityAssessor {
-	return &qualityAssessor{}
-}
-
-func (a *qualityAssessor) AssessSchema(ctx context.Context, schema Schema, sample DataSample) QualityReport {
-	// Placeholder - real implementation in quality package
-	return QualityReport{
-		SchemaName:     schema.Name,
-		AssessmentTime: time.Now(),
-		OverallScore:   0.85,
-		SampleSize:     sample.SampleSize,
-		TimeRange:      sample.TimeRange,
-		Dimensions: QualityDimensions{
-			Completeness: QualityDimension{Name: "Completeness", Score: 0.9},
-			Consistency:  QualityDimension{Name: "Consistency", Score: 0.85},
-			Timeliness:   QualityDimension{Name: "Timeliness", Score: 0.95},
-			Uniqueness:   QualityDimension{Name: "Uniqueness", Score: 0.8},
-			Validity:     QualityDimension{Name: "Validity", Score: 0.9},
-		},
-	}
-}
-
-// MetricsCollector placeholder
-type MetricsCollector interface {
-	RecordDiscoveryDuration(duration time.Duration)
-	RecordCacheHit(cacheType string)
-	RecordCacheMiss(cacheType string)
-	RecordError(errorType string, err error)
-	RecordSchemaDiscovered(eventType string)
-}
-
-type metricsCollector struct {
-	config ObservabilityConfig
-}
-
-func NewMetricsCollector(config ObservabilityConfig) MetricsCollector {
-	return &metricsCollector{config: config}
-}
-
-func (m *metricsCollector) RecordDiscoveryDuration(duration time.Duration) {}
-func (m *metricsCollector) RecordCacheHit(cacheType string) {}
-func (m *metricsCollector) RecordCacheMiss(cacheType string) {}
-func (m *metricsCollector) RecordError(errorType string, err error) {}
-func (m *metricsCollector) RecordSchemaDiscovered(eventType string) {}
+// MetricsCollector implementation moved to factory.go
 
 // Helper functions
 

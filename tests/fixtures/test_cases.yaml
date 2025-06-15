@@ -1,0 +1,693 @@
+# Test Cases for MCP Server Field Testing
+# Based on the 50-prompt checklist for GitHub Copilot Agent Mode
+
+nrql_query_assistant:
+  - id: 1
+    name: "Basic NRQL validation"
+    prompt: "#query_check SELECT count(*) FROM Transaction SINCE 30 minutes ago"
+    expected_tool: "query_check"
+    expected_response:
+      status: "valid"
+      cost_estimate: "low"
+      event_count: "<1M"
+    assertions:
+      - "Returns green badge for valid query"
+      - "Cost estimate is low"
+      - "No warnings present"
+
+  - id: 2
+    name: "Validate with wildcard warning"
+    prompt: "Validate this NRQL: SELECT * FROM Log FACET host"
+    expected_tool: "query_check"
+    expected_response:
+      status: "valid_with_warnings"
+      warnings:
+        - "Using * can impact performance"
+        - "FACET host may have high cardinality"
+    assertions:
+      - "Warns about SELECT *"
+      - "Warns about high cardinality facet"
+
+  - id: 3
+    name: "High cardinality facet check"
+    prompt: "Is userId a bad facet here? SELECT duration FROM Transaction FACET userId"
+    expected_tool: "query_check"
+    expected_response:
+      cardinality_warning: true
+      estimated_cardinality: 50000
+      suggestion: "Consider adding LIMIT 100"
+    assertions:
+      - "Flags ~50K cardinality"
+      - "Suggests LIMIT clause"
+
+  - id: 4
+    name: "Cost estimation for percentile query"
+    prompt: "Estimate the cost for SELECT percentile(duration,95) FROM Span WHERE appName='cart' SINCE 1 day ago"
+    expected_tool: "query_check"
+    expected_response:
+      event_scan_count: "~5M"
+      cost_tier: "medium"
+      estimated_cost_usd: 0.25
+    assertions:
+      - "Returns event scan count"
+      - "Shows cost tier (low/medium/high)"
+      - "Provides dollar estimate"
+
+  - id: 5
+    name: "Rewrite slow query"
+    prompt: "Rewrite this slow query for me: SELECT * FROM Transaction WHERE duration > 5"
+    expected_tool: "query_check"
+    expected_response:
+      optimization_suggestions:
+        - "Add time range limit"
+        - "Use sampling"
+        - "Select specific attributes"
+      rewritten_query: "SELECT name, duration FROM Transaction WHERE duration > 5 SINCE 1 hour ago LIMIT 1000"
+    assertions:
+      - "Proposes filtered version"
+      - "Adds sampling or limits"
+
+  - id: 6
+    name: "JOIN validation"
+    prompt: "Can I join these two event types? SELECT * FROM Transaction JOIN Span ON Transaction.traceId = Span.traceId"
+    expected_tool: "query_check"
+    expected_response:
+      join_valid: true
+      constraints_met: true
+      performance_notes: "JOIN limited to 1 hour time window"
+    assertions:
+      - "Validates join constraints"
+      - "Notes time window limits"
+
+  - id: 7
+    name: "Generate exploratory query"
+    prompt: "Generate an exploratory query for checkout errors"
+    expected_tool: "query_check"
+    expected_response:
+      generated_query: "SELECT count(*), average(duration) FROM Transaction WHERE name LIKE '%checkout%' AND error IS true FACET error.message SINCE 1 hour ago"
+      explanation: "This query finds checkout-related errors and groups by error message"
+    assertions:
+      - "Returns starter query"
+      - "Query is validated"
+
+  - id: 8
+    name: "TIMESERIES auto explanation"
+    prompt: "What's wrong with SELECT count(*) FROM Transaction TIMESERIES auto?"
+    expected_tool: "query_check"
+    expected_response:
+      issue: "auto resolution varies with time range"
+      suggestion: "Use explicit bucket size like TIMESERIES 5 minutes"
+      explanation: "auto can be 1m, 5m, 30m, etc. based on query span"
+    assertions:
+      - "Explains auto resolution rules"
+      - "Suggests fixed time step"
+
+  - id: 9
+    name: "Sample rows request"
+    prompt: "Show sample 10 rows for this query: SELECT * FROM Transaction WHERE appName='web'"
+    expected_tool: "query_check"
+    expected_response:
+      modified_query: "SELECT * FROM Transaction WHERE appName='web' LIMIT 10"
+      sample_data: [...]
+    assertions:
+      - "Adds LIMIT 10"
+      - "Returns sample rows"
+
+  - id: 10
+    name: "Time window adjustment"
+    prompt: "Set the time window to peak hours only for the previous query"
+    expected_tool: "query_check"
+    expected_response:
+      modified_query: "SELECT * FROM Transaction WHERE appName='web' AND hourOfDay(timestamp) BETWEEN 9 AND 17 LIMIT 10"
+      explanation: "Added hourOfDay filter for 9 AM - 5 PM"
+    assertions:
+      - "Suggests hourOfDay() function"
+      - "Adds appropriate WHERE clause"
+
+dashboard_discovery:
+  - id: 11
+    name: "Find dashboards by metric"
+    prompt: "List dashboards using metric cpuPercent"
+    expected_tool: "find_usage"
+    expected_response:
+      dashboards:
+        - name: "Infrastructure Overview"
+          widget_count: 3
+          last_updated: "2024-01-15"
+        - name: "Host Monitoring"
+          widget_count: 5
+          last_updated: "2024-01-10"
+    assertions:
+      - "Returns table of dashboards"
+      - "Shows widget count"
+
+  - id: 12
+    name: "Export to CSV"
+    prompt: "Export that list to CSV"
+    expected_tool: "find_usage"
+    parameters:
+      format: "csv"
+    expected_response:
+      csv_file: "dashboards_cpuPercent.csv"
+      rows_exported: 2
+    assertions:
+      - "CSV attachment delivered"
+      - "Contains dashboard data"
+
+  - id: 13
+    name: "Find dashboard owners"
+    prompt: "Which team owns widgets with error.rate?"
+    expected_tool: "find_usage"
+    expected_response:
+      dashboards_with_owners:
+        - name: "Service Health"
+          owner: "platform-team"
+          tags: ["team:platform"]
+    assertions:
+      - "Owner column shows team tags"
+      - "Filters by metric usage"
+
+  - id: 14
+    name: "Refresh cache"
+    prompt: "Refresh the cache first"
+    expected_tool: "find_usage"
+    parameters:
+      refresh: true
+    expected_response:
+      cache_refreshed: true
+      timestamp: "2024-01-20T10:30:00Z"
+    assertions:
+      - "Cache timestamp changes"
+      - "Fresh data loaded"
+
+  - id: 15
+    name: "Find stale dashboards"
+    prompt: "Find dashboards last edited > 90 days ago"
+    expected_tool: "find_usage"
+    expected_response:
+      stale_dashboards:
+        - name: "Legacy Monitoring"
+          last_updated: "2023-10-01"
+          days_since_update: 111
+    assertions:
+      - "Filters by updatedAt"
+      - "Shows age in days"
+
+  - id: 16
+    name: "Search NRQL content"
+    prompt: "Show me dashboards containing FACET userId"
+    expected_tool: "find_usage"
+    expected_response:
+      dashboards_with_pattern:
+        - name: "User Analytics"
+          matching_widgets: 2
+          nrql_snippets: ["...FACET userId..."]
+    assertions:
+      - "Regex search inside NRQL"
+      - "Shows matching snippets"
+
+  - id: 17
+    name: "Visualize metric usage"
+    prompt: "Visualise usage of transaction.duration across dashboards"
+    expected_tool: "find_usage"
+    expected_response:
+      visualization_data:
+        type: "bar_chart"
+        data: [...]
+    assertions:
+      - "Renders bar chart summary"
+      - "Shows usage distribution"
+
+  - id: 18
+    name: "Find broken NRQL"
+    prompt: "Any dashboards with broken NRQL?"
+    expected_tool: "find_usage"
+    expected_response:
+      broken_widgets:
+        - dashboard: "Old Dashboard"
+          widget: "CPU Chart"
+          error: "Unknown attribute: cpu.percentage"
+    assertions:
+      - "Widgets with validation errors flagged"
+      - "Shows error details"
+
+  - id: 19
+    name: "Export widget NRQL"
+    prompt: "Export full widget NRQL for dashboard 'Production Overview'"
+    expected_tool: "find_usage"
+    expected_response:
+      export_file: "production_overview_nrql.json"
+      widget_count: 12
+      format: "json"
+    assertions:
+      - "JSON file with widget/NRQL pairs"
+      - "Complete NRQL exported"
+
+  - id: 20
+    name: "Delete cache"
+    prompt: "Delete cache"
+    expected_tool: "find_usage"
+    parameters:
+      action: "clear_cache"
+    expected_response:
+      cache_cleared: true
+      size_before: "45MB"
+      size_after: "0MB"
+    assertions:
+      - "Local SQLite dropped"
+      - "Size goes to 0"
+
+template_generator:
+  - id: 21
+    name: "Generate golden signals dashboard"
+    prompt: "Generate a golden-signals dashboard for service auth-api"
+    expected_tool: "generate_dashboard"
+    expected_response:
+      dashboard_guid: "MDX-2024-ABC"
+      dashboard_url: "https://one.newrelic.com/dashboards/MDX-2024-ABC"
+      widgets_created: 4
+      template_used: "golden-signals"
+    assertions:
+      - "Dashboard link returned"
+      - "Four widgets present (golden signals)"
+
+  - id: 22
+    name: "Multi-service dashboard generation"
+    prompt: "Create dashboards for cart,checkout,payment from same template"
+    expected_tool: "generate_dashboard"
+    parameters:
+      services: ["cart", "checkout", "payment"]
+    expected_response:
+      dashboards_created:
+        - service: "cart"
+          guid: "MDX-2024-DEF"
+        - service: "checkout"  
+          guid: "MDX-2024-GHI"
+        - service: "payment"
+          guid: "MDX-2024-JKL"
+    assertions:
+      - "Three GUIDs returned"
+      - "All use same template"
+
+  - id: 23
+    name: "Custom time period"
+    prompt: "Use last 24 h period instead of 7 d"
+    expected_tool: "generate_dashboard"
+    parameters:
+      time_range: "24 hours"
+    expected_response:
+      nrql_substituted: true
+      time_clause: "SINCE 24 hours ago"
+    assertions:
+      - "NRQL template substituted"
+      - "Uses 24h timeframe"
+
+  - id: 24
+    name: "Theme and layout customization"
+    prompt: "Generate with dark theme and 3-column layout"
+    expected_tool: "generate_dashboard"
+    parameters:
+      theme: "dark"
+      layout: "3-column"
+    expected_response:
+      style_applied: true
+      theme: "dark"
+      grid_columns: 3
+    assertions:
+      - "Dashboard JSON has style edits"
+      - "Dark theme applied"
+
+  - id: 25
+    name: "Skip specific widgets"
+    prompt: "Skip error-rate widget"
+    expected_tool: "generate_dashboard"
+    parameters:
+      exclude_widgets: ["error-rate"]
+    expected_response:
+      widgets_created: 3
+      skipped: ["error-rate"]
+    assertions:
+      - "Template section omitted"
+      - "Only 3 widgets created"
+
+  - id: 26
+    name: "Preview mode"
+    prompt: "Preview NRQL before create"
+    expected_tool: "generate_dashboard"
+    parameters:
+      dry_run: true
+    expected_response:
+      preview_mode: true
+      nrql_queries: [...]
+      dashboard_created: false
+    assertions:
+      - "Dashboard not created"
+      - "NRQL returned for review"
+
+  - id: 27
+    name: "List available templates"
+    prompt: "Template list"
+    expected_tool: "list_templates"
+    expected_response:
+      templates:
+        - name: "golden-signals"
+          description: "Four golden signals"
+        - name: "sli-slo"
+          description: "Service level indicators"
+        - name: "infrastructure"
+          description: "Host and container metrics"
+    assertions:
+      - "YAML template names listed"
+      - "Descriptions provided"
+
+  - id: 28
+    name: "Custom template from URL"
+    prompt: "Generate custom template from GitHub URL https://github.com/user/templates/dashboard.yaml"
+    expected_tool: "generate_dashboard"
+    parameters:
+      template_url: "https://github.com/user/templates/dashboard.yaml"
+    expected_response:
+      template_fetched: true
+      source: "github"
+      dashboard_created: true
+    assertions:
+      - "Fetches raw YAML"
+      - "Builds dashboard from remote template"
+
+  - id: 29
+    name: "Add dashboard description"
+    prompt: "Add markdown description to the dashboard"
+    expected_tool: "generate_dashboard"
+    parameters:
+      description: "## Service Health\nMonitoring golden signals for the service"
+    expected_response:
+      markdown_widget_added: true
+      widget_type: "markdown"
+    assertions:
+      - "Dashboard has text widget"
+      - "Markdown rendered"
+
+  - id: 30
+    name: "Fallback for missing metrics"
+    prompt: "If metric missing, fallback to throughput only"
+    expected_tool: "generate_dashboard"
+    parameters:
+      fallback_enabled: true
+    expected_response:
+      missing_metrics: ["error.rate"]
+      fallback_applied: true
+      widgets_adapted: 1
+    assertions:
+      - "Adapts via MetricExists helper"
+      - "Uses fallback metrics"
+
+bulk_operations:
+  - id: 31
+    name: "Find dashboards with old metric"
+    prompt: "Find dashboards where NRQL contains old.metric.name"
+    expected_tool: "bulk_search"
+    expected_response:
+      matching_dashboards: 3
+      total_occurrences: 7
+      dashboards:
+        - name: "Legacy Dashboard"
+          occurrences: 4
+    assertions:
+      - "List count > 0"
+      - "Shows occurrence count"
+
+  - id: 32
+    name: "Preview metric replacement"
+    prompt: "Preview replacement with new.metric.name"
+    expected_tool: "bulk_update"
+    parameters:
+      dry_run: true
+      old_value: "old.metric.name"
+      new_value: "new.metric.name"
+    expected_response:
+      diff_preview: [...]
+      changes_count: 7
+      affected_dashboards: 3
+    assertions:
+      - "Diff output shown"
+      - "Nothing mutated"
+
+  - id: 33
+    name: "Execute bulk update"
+    prompt: "Proceed with update"
+    expected_tool: "bulk_update"
+    parameters:
+      confirm: true
+    expected_response:
+      status: "success"
+      updated_count: 7
+      rollback_file: "rollback_2024-01-20_1234.json"
+    assertions:
+      - "200 OK response"
+      - "Rollback file saved"
+
+  - id: 34
+    name: "Rollback operation"
+    prompt: "Rollback last bulk operation"
+    expected_tool: "bulk_rollback"
+    expected_response:
+      rollback_successful: true
+      restored_count: 7
+      operation_id: "bulk_2024-01-20_1234"
+    assertions:
+      - "Previous NRQL restored"
+      - "Rollback confirmed"
+
+  - id: 35
+    name: "Bulk tagging"
+    prompt: "Add tag owner:platform to all dashboards in folder 'Infra'"
+    expected_tool: "bulk_tag"
+    parameters:
+      folder: "Infra"
+      tags: {"owner": "platform"}
+    expected_response:
+      tagged_count: 5
+      dashboards_updated: [...]
+    assertions:
+      - "Tags added via NerdGraph"
+      - "Shows count updated"
+
+  - id: 36
+    name: "Normalize time windows"
+    prompt: "Normalize time window to 30 d on SLIs dashboards"
+    expected_tool: "bulk_update"
+    parameters:
+      filter: "tag:sli"
+      time_window: "30 days ago"
+    expected_response:
+      queries_updated: 12
+      normalized_to: "SINCE 30 days ago"
+    assertions:
+      - "Queries updated with new time window"
+      - "Consistent timeframe applied"
+
+  - id: 37
+    name: "Delete temporary dashboards"
+    prompt: "Delete dashboards tagged temp:demo"
+    expected_tool: "bulk_delete"
+    parameters:
+      filter: "tag:temp:demo"
+    expected_response:
+      delete_count: 3
+      deleted_guids: ["MDX-123", "MDX-456", "MDX-789"]
+    assertions:
+      - "GUID list deleted"
+      - "Confirms deletion count"
+
+  - id: 38
+    name: "Update alert thresholds"
+    prompt: "Update alert thresholds where metric = latency"
+    expected_tool: "bulk_alert_update"
+    parameters:
+      metric: "latency"
+      new_threshold: 500
+    expected_response:
+      alerts_updated: 8
+      conditions_patched: [...]
+    assertions:
+      - "Condition JSON patched"
+      - "New thresholds applied"
+
+  - id: 39
+    name: "Abort bulk operation"
+    prompt: "Abort bulk job #42"
+    expected_tool: "bulk_abort"
+    parameters:
+      job_id: 42
+    expected_response:
+      abort_successful: true
+      processed_before_abort: 15
+      total_planned: 50
+    assertions:
+      - "Worker queue stops"
+      - "No partial errors"
+
+  - id: 40
+    name: "List bulk job history"
+    prompt: "List bulk jobs with status"
+    expected_tool: "bulk_jobs"
+    expected_response:
+      jobs:
+        - id: 42
+          status: "aborted"
+          duration: "2m 15s"
+        - id: 41
+          status: "completed"
+          duration: "5m 30s"
+    assertions:
+      - "Shows history"
+      - "Includes durations"
+
+smart_alerts:
+  - id: 41
+    name: "Create baseline alert"
+    prompt: "Create alert on response.time for service api (medium sensitivity)"
+    expected_tool: "create_alert"
+    parameters:
+      metric: "response.time"
+      service: "api"
+      sensitivity: "medium"
+    expected_response:
+      alert_created: true
+      condition_id: "123456"
+      thresholds:
+        baseline: "3 std devs"
+        static: "1000ms"
+    assertions:
+      - "Baseline + static thresholds"
+      - "Medium sensitivity applied"
+
+  - id: 42
+    name: "Dry run alert creation"
+    prompt: "Dry-run only"
+    expected_tool: "create_alert"
+    parameters:
+      dry_run: true
+    expected_response:
+      dry_run: true
+      nrql_tested: true
+      condition_created: false
+      validation_passed: true
+    assertions:
+      - "NRQL tested"
+      - "No condition created"
+
+  - id: 43
+    name: "High sensitivity alert"
+    prompt: "High sensitivity mode"
+    expected_tool: "create_alert"
+    parameters:
+      sensitivity: "high"
+    expected_response:
+      thresholds:
+        percentile: "p95"
+        multiplier: 2.5
+        window: "5 minutes"
+    assertions:
+      - "Tighter thresholds"
+      - "Uses p95"
+
+  - id: 44
+    name: "Alert with runbook"
+    prompt: "Link new alert to runbook URL https://wiki.company.com/runbooks/api"
+    expected_tool: "create_alert"
+    parameters:
+      runbook_url: "https://wiki.company.com/runbooks/api"
+    expected_response:
+      runbook_linked: true
+      webhook_configured: true
+    assertions:
+      - "Condition has webhook"
+      - "Runbook URL set"
+
+  - id: 45
+    name: "Group alerts into policy"
+    prompt: "Group alerts for checkout-api into policy 'Checkout'"
+    expected_tool: "group_alerts"
+    parameters:
+      service: "checkout-api"
+      policy_name: "Checkout"
+    expected_response:
+      policy_updated: true
+      policy_guid: "POL-789"
+      alerts_moved: 5
+    assertions:
+      - "Policy GUID updated"
+      - "Alerts grouped"
+
+  - id: 46
+    name: "Simulate alert behavior"
+    prompt: "Simulate alert firing during Black Friday"
+    expected_tool: "alert_simulate"
+    parameters:
+      scenario: "black_friday"
+      date: "2024-11-24"
+    expected_response:
+      simulation_results:
+        false_positive_rate: 0.03
+        expected_incidents: 2
+        confidence: 0.97
+    assertions:
+      - "False positive < 5%"
+      - "Shows expected behavior"
+
+  - id: 47
+    name: "Multi-step workflow"
+    prompt: "Generate golden signals dashboard for ad-api and alerts for each widget"
+    expected_tools: ["generate_dashboard", "create_alert"]
+    expected_response:
+      workflow_steps:
+        - tool: "generate_dashboard"
+          result: "dashboard_created"
+        - tool: "create_alert"
+          result: "4 alerts created"
+    assertions:
+      - "Dashboard + N alerts created"
+      - "Copilot explains steps"
+
+  - id: 48
+    name: "Alert audit"
+    prompt: "Validate alert noisiness last 7 d"
+    expected_tool: "alert_audit"
+    expected_response:
+      audit_results:
+        critical_alerts: 0
+        warning_alerts: 12
+        noisy_alerts: 3
+        recommendations: ["Tune alert #456"]
+    assertions:
+      - "Reports critical vs warning"
+      - "Identifies noisy alerts"
+
+  - id: 49
+    name: "Auto-tune alerts"
+    prompt: "Auto-tune all alerts where signal flaps > 3/day"
+    expected_tool: "alert_tune"
+    expected_response:
+      alerts_tuned: 3
+      adjustments:
+        - alert_id: "456"
+          old_threshold: "p90"
+          new_threshold: "p95"
+    assertions:
+      - "Conditions updated"
+      - "Thresholds relaxed"
+
+  - id: 50
+    name: "End-to-end smoke test"
+    prompt: "Optimize slow NRQL, generate dashboard, create alerts, send summary"
+    expected_tools: ["query_check", "generate_dashboard", "create_alert"]
+    expected_response:
+      workflow_summary:
+        nrql_optimized: true
+        dashboard_url: "https://one.newrelic.com/..."
+        alerts_created: 4
+        markdown_summary: "## Summary\n..."
+    assertions:
+      - "All three tools called"
+      - "Summary shows links and thresholds"

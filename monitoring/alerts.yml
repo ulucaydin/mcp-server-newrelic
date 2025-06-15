@@ -1,0 +1,126 @@
+# Alert rules for UDS
+
+groups:
+  - name: uds_alerts
+    interval: 30s
+    rules:
+      # Service availability
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.instance }} is down"
+          description: "{{ $labels.instance }} has been down for more than 2 minutes."
+
+      # High error rate
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(intelligence_errors_total[5m])) by (component)
+            /
+            sum(rate(intelligence_operations_total[5m])) by (component)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate in {{ $labels.component }}"
+          description: "Error rate is above 5% for {{ $labels.component }}"
+
+      # Intelligence Engine specific alerts
+      - alert: PatternDetectionSlow
+        expr: |
+          histogram_quantile(0.95, 
+            rate(intelligence_operation_duration_seconds_bucket{operation="pattern_detection"}[5m])
+          ) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pattern detection is slow"
+          description: "95th percentile pattern detection time is above 10s"
+
+      - alert: QueryGenerationFailing
+        expr: |
+          sum(rate(intelligence_queries_generated_total[5m])) == 0
+          AND
+          sum(rate(intelligence_errors_total{component="query_generator"}[5m])) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Query generation is failing"
+          description: "No queries are being generated but errors are occurring"
+
+      # Resource alerts
+      - alert: HighMemoryUsage
+        expr: |
+          (
+            intelligence_memory_usage_bytes / (1024 * 1024 * 1024)
+          ) > 1.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage in Intelligence Engine"
+          description: "Memory usage is above 1.5GB"
+
+      - alert: HighCPUUsage
+        expr: intelligence_cpu_usage_percent > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage in Intelligence Engine"
+          description: "CPU usage is above 80%"
+
+      # NRDB query alerts
+      - alert: HighNRDBQueryRate
+        expr: |
+          sum(rate(uds_nrdb_queries_total[1m])) > 100
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High NRDB query rate"
+          description: "NRDB query rate is above 100 queries per minute"
+
+      - alert: NRDBRateLimited
+        expr: |
+          sum(rate(uds_nrdb_rate_limited_total[5m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "NRDB queries are being rate limited"
+          description: "New Relic is rate limiting our queries"
+
+      # Cache performance
+      - alert: LowCacheHitRate
+        expr: |
+          (
+            sum(rate(uds_cache_hits_total[5m]))
+            /
+            sum(rate(uds_cache_requests_total[5m]))
+          ) < 0.5
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Low cache hit rate"
+          description: "Cache hit rate is below 50%"
+
+      # Model registry alerts
+      - alert: ModelLoadingSlow
+        expr: |
+          histogram_quantile(0.95,
+            rate(intelligence_model_load_duration_seconds_bucket[5m])
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Model loading is slow"
+          description: "95th percentile model load time is above 5s"

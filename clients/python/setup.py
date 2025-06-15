@@ -35,6 +35,8 @@ setup(
         "pydantic>=2.0.0",
         "tenacity>=8.0.0",
         "python-dateutil>=2.8.0",
+        "click>=8.0.0",
+        "rich>=13.0.0",
     ],
     extras_require={
         "dev": [

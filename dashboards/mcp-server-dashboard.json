@@ -1,0 +1,350 @@
+{
+  "name": "MCP Server for New Relic - Overview",
+  "description": "Comprehensive monitoring dashboard for MCP Server for New Relic",
+  "pages": [
+    {
+      "name": "Overview",
+      "widgets": [
+        {
+          "title": "Service Health",
+          "row": 1,
+          "column": 1,
+          "width": 4,
+          "height": 3,
+          "visualization": "billboard",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT percentage(count(*), WHERE error IS FALSE) AS 'Success Rate' FROM Transaction WHERE appName IN ('mcp-server-newrelic', 'intelligence-engine') SINCE 30 minutes ago"
+              }
+            ],
+            "thresholds": {
+              "critical": 95,
+              "warning": 98
+            }
+          }
+        },
+        {
+          "title": "Response Time",
+          "row": 1,
+          "column": 5,
+          "width": 4,
+          "height": 3,
+          "visualization": "line",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT average(duration) FROM Transaction WHERE appName IN ('mcp-server-newrelic', 'intelligence-engine') TIMESERIES 1 minute SINCE 30 minutes ago"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Throughput",
+          "row": 1,
+          "column": 9,
+          "width": 4,
+          "height": 3,
+          "visualization": "line",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT rate(count(*), 1 minute) FROM Transaction WHERE appName IN ('mcp-server-newrelic', 'intelligence-engine') TIMESERIES 1 minute SINCE 30 minutes ago"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Error Rate",
+          "row": 4,
+          "column": 1,
+          "width": 6,
+          "height": 3,
+          "visualization": "line",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT percentage(count(*), WHERE error IS TRUE) FROM Transaction WHERE appName IN ('mcp-server-newrelic', 'intelligence-engine') TIMESERIES 1 minute SINCE 30 minutes ago"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Top Transactions by Time",
+          "row": 4,
+          "column": 7,
+          "width": 6,
+          "height": 3,
+          "visualization": "table",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT average(duration), count(*) FROM Transaction WHERE appName IN ('mcp-server-newrelic', 'intelligence-engine') FACET name SINCE 30 minutes ago LIMIT 10"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Discovery Engine",
+      "widgets": [
+        {
+          "title": "Schema Discovery Performance",
+          "row": 1,
+          "column": 1,
+          "width": 6,
+          "height": 3,
+          "visualization": "line",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT average(newrelic.timeslice.value) FROM Metric WHERE metricTimesliceName = 'Custom/Discovery/DiscoverSchemas/Duration' TIMESERIES 1 minute SINCE 30 minutes ago"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Schemas Discovered",
+          "row": 1,
+          "column": 7,
+          "width": 6,
+          "height": 3,
+          "visualization": "billboard",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT sum(schemas_found) FROM SchemaDiscovery SINCE 30 minutes ago"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Cache Hit Rate",
+          "row": 4,
+          "column": 1,
+          "width": 4,
+          "height": 3,
+          "visualization": "billboard_comparison",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT percentage(count(*), WHERE `cache.hit` IS TRUE) AS 'Hit Rate' FROM Transaction WHERE appName = 'mcp-server-newrelic' AND name LIKE '%DiscoverSchemas%' SINCE 30 minutes ago COMPARE WITH 1 hour ago"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Relationship Discovery",
+          "row": 4,
+          "column": 5,
+          "width": 4,
+          "height": 3,
+          "visualization": "line",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT average(relationships_found) FROM RelationshipDiscovery TIMESERIES 5 minutes SINCE 1 hour ago"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Discovery Errors",
+          "row": 4,
+          "column": 9,
+          "width": 4,
+          "height": 3,
+          "visualization": "table",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT count(*) FROM TransactionError WHERE appName = 'mcp-server-newrelic' AND transactionName LIKE '%Discovery%' FACET error.message SINCE 1 hour ago LIMIT 10"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Intelligence Engine",
+      "widgets": [
+        {
+          "title": "Pattern Analysis Performance",
+          "row": 1,
+          "column": 1,
+          "width": 6,
+          "height": 3,
+          "visualization": "line",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT average(newrelic.timeslice.value) FROM Metric WHERE metricTimesliceName = 'Custom/Intelligence/PatternAnalysis/Duration' TIMESERIES 1 minute SINCE 30 minutes ago"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Patterns Found",
+          "row": 1,
+          "column": 7,
+          "width": 6,
+          "height": 3,
+          "visualization": "line",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT average(newrelic.timeslice.value) FROM Metric WHERE metricTimesliceName = 'Custom/Intelligence/PatternAnalysis/PatternsFound' TIMESERIES 5 minutes SINCE 1 hour ago"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Query Generation Confidence",
+          "row": 4,
+          "column": 1,
+          "width": 6,
+          "height": 3,
+          "visualization": "histogram",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT histogram(newrelic.timeslice.value, 10, 0.5, 1) FROM Metric WHERE metricTimesliceName = 'Custom/Intelligence/QueryGeneration/Confidence' SINCE 1 hour ago"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Intelligence Service Requests",
+          "row": 4,
+          "column": 7,
+          "width": 6,
+          "height": 3,
+          "visualization": "table",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT count(*), average(duration) FROM Transaction WHERE appName = 'intelligence-engine' FACET name SINCE 30 minutes ago"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "API Performance",
+      "widgets": [
+        {
+          "title": "API Endpoint Response Times",
+          "row": 1,
+          "column": 1,
+          "width": 8,
+          "height": 4,
+          "visualization": "line",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT average(duration) FROM Transaction WHERE appName = 'mcp-server-newrelic' AND name LIKE 'WebTransaction/Go/%' FACET name TIMESERIES 1 minute SINCE 30 minutes ago"
+              }
+            ]
+          }
+        },
+        {
+          "title": "API Status Codes",
+          "row": 1,
+          "column": 9,
+          "width": 4,
+          "height": 4,
+          "visualization": "pie",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT count(*) FROM Transaction WHERE appName = 'mcp-server-newrelic' FACET `http.statusCode` SINCE 30 minutes ago"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Slowest API Endpoints",
+          "row": 5,
+          "column": 1,
+          "width": 6,
+          "height": 3,
+          "visualization": "bar",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT average(duration) FROM Transaction WHERE appName = 'mcp-server-newrelic' AND name LIKE 'WebTransaction/Go/%' FACET name SINCE 1 hour ago LIMIT 10"
+              }
+            ]
+          }
+        },
+        {
+          "title": "API Error Details",
+          "row": 5,
+          "column": 7,
+          "width": 6,
+          "height": 3,
+          "visualization": "table",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT count(*), latest(error.message) FROM TransactionError WHERE appName = 'mcp-server-newrelic' FACET transactionName, error.class SINCE 1 hour ago LIMIT 20"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Custom Metrics",
+      "widgets": [
+        {
+          "title": "Schema Discovery Events",
+          "row": 1,
+          "column": 1,
+          "width": 12,
+          "height": 3,
+          "visualization": "event_table",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT timestamp, schemas_found, event_types, cache_key FROM SchemaDiscovery SINCE 1 hour ago LIMIT 50"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Pattern Analysis Events",
+          "row": 4,
+          "column": 1,
+          "width": 6,
+          "height": 3,
+          "visualization": "table",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT count(*), average(data_size) FROM PatternAnalysis FACET has_columns, has_context SINCE 1 hour ago"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Query Generation Events",
+          "row": 4,
+          "column": 7,
+          "width": 6,
+          "height": 3,
+          "visualization": "table",
+          "configuration": {
+            "nrqlQueries": [
+              {
+                "query": "SELECT count(*), average(query_length) FROM QueryGeneration FACET has_context SINCE 1 hour ago"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

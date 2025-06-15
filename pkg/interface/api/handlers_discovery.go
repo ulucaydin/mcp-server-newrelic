@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/deepaucksharma/mcp-server-newrelic/pkg/discovery"
 )
 
@@ -17,6 +18,9 @@ type Handler struct {
 	// Service interfaces from different tracks
 	discovery discovery.DiscoveryEngine
 	// TODO: Add pattern, query, dashboard services when available
+	
+	// New Relic APM
+	nrApp *newrelic.Application
 }
 
 // NewHandler creates a new API handler
@@ -27,6 +31,11 @@ func NewHandler() *Handler {
 // SetDiscoveryEngine sets the discovery engine (from Track 1)
 func (h *Handler) SetDiscoveryEngine(engine discovery.DiscoveryEngine) {
 	h.discovery = engine
+}
+
+// SetNewRelicApp sets the New Relic application for APM
+func (h *Handler) SetNewRelicApp(app *newrelic.Application) {
+	h.nrApp = app
 }
 
 // GetHealth handles GET /health

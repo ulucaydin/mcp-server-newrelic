@@ -1,0 +1,134 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Nightly run at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of tests to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - integration
+          - e2e
+          - copilot
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r tests/requirements.txt
+    
+    - name: Start test environment
+      run: |
+        cd tests
+        docker-compose -f docker-compose.test.yml up -d
+        cd ..
+        # Wait for services to be ready
+        timeout 60 bash -c 'until curl -s http://localhost:3333/health; do sleep 2; done'
+    
+    - name: Run integration tests
+      if: github.event.inputs.test_type == 'integration' || github.event.inputs.test_type == 'all' || github.event.inputs.test_type == ''
+      run: python -m pytest tests/integration/ -v --junit-xml=test-results/integration.xml
+    
+    - name: Run E2E tests
+      if: github.event.inputs.test_type == 'e2e' || github.event.inputs.test_type == 'all' || github.event.inputs.test_type == ''
+      run: python -m pytest tests/e2e/test_end_to_end.py -v --junit-xml=test-results/e2e.xml
+    
+    - name: Run Copilot tests (CI mode)
+      if: github.event.inputs.test_type == 'copilot' || github.event.inputs.test_type == 'all' || github.event.inputs.test_type == ''
+      run: python tests/e2e/run_copilot_tests.py --ci
+    
+    - name: Generate coverage report
+      if: matrix.python-version == '3.11'
+      run: |
+        python -m pytest tests/ --cov=. --cov-report=xml --cov-report=html
+    
+    - name: Upload coverage to Codecov
+      if: matrix.python-version == '3.11'
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ matrix.python-version }}
+        path: test-results/
+    
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v3
+      if: matrix.python-version == '3.11'
+      with:
+        name: coverage-report
+        path: htmlcov/
+    
+    - name: Stop test environment
+      if: always()
+      run: |
+        cd tests
+        docker-compose -f docker-compose.test.yml down
+        cd ..
+
+  performance:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r tests/requirements.txt
+        pip install locust
+    
+    - name: Run performance tests
+      run: |
+        # Start server
+        cd tests
+        docker-compose -f docker-compose.test.yml up -d
+        cd ..
+        
+        # Wait for server
+        timeout 60 bash -c 'until curl -s http://localhost:3333/health; do sleep 2; done'
+        
+        # Run basic performance test
+        python -m pytest tests/e2e/test_end_to_end.py::TestPerformance -v
+        
+        # Stop server
+        cd tests
+        docker-compose -f docker-compose.test.yml down
+        cd ..

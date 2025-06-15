@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"golang.org/x/time/rate"
 )
 
@@ -159,4 +160,62 @@ func getClientIP(r *http.Request) string {
 	
 	// Fall back to remote address
 	return strings.Split(r.RemoteAddr, ":")[0]
+}
+
+// newRelicMiddleware adds New Relic APM instrumentation to HTTP handlers
+func newRelicMiddleware(app *newrelic.Application) func(http.Handler) http.Handler {
+	if app == nil {
+		// Return a no-op middleware if APM is not available
+		return func(next http.Handler) http.Handler {
+			return next
+		}
+	}
+	
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Start transaction with the request pattern as the name
+			txn := app.StartTransaction(r.Method + " " + r.URL.Path)
+			defer txn.End()
+			
+			// Add transaction to request context
+			r = newrelic.RequestWithTransactionContext(r, txn)
+			
+			// Set transaction attributes
+			txn.AddAttribute("http.method", r.Method)
+			txn.AddAttribute("http.url", r.URL.String())
+			txn.AddAttribute("http.host", r.Host)
+			txn.AddAttribute("http.scheme", r.URL.Scheme)
+			
+			// Add request ID if available
+			if requestID := r.Header.Get("X-Request-ID"); requestID != "" {
+				txn.AddAttribute("request.id", requestID)
+			}
+			
+			// Wrap response writer to capture status code
+			wrapped := &nrResponseWriter{
+				ResponseWriter: txn.SetWebResponse(w),
+				txn:           txn,
+			}
+			
+			// Serve the request
+			next.ServeHTTP(wrapped, r)
+			
+			// Record response status
+			if wrapped.statusCode != 0 {
+				txn.AddAttribute("http.statusCode", wrapped.statusCode)
+			}
+		})
+	}
+}
+
+// nrResponseWriter wraps http.ResponseWriter for New Relic
+type nrResponseWriter struct {
+	http.ResponseWriter
+	txn        *newrelic.Transaction
+	statusCode int
+}
+
+func (w *nrResponseWriter) WriteHeader(code int) {
+	w.statusCode = code
+	w.ResponseWriter.WriteHeader(code)
 }

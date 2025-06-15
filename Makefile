@@ -4,83 +4,47 @@
 
 # Default target
 help:
-	@echo "Universal Data Synthesizer (UDS)"
+	@echo "MCP Server for New Relic"
 	@echo ""
 	@echo "Build targets:"
-	@echo "  build             Build all binaries"
-	@echo "  build-discovery   Build discovery engine"
-	@echo "  build-mcp         Build MCP server"
+	@echo "  build             Build MCP server"
 	@echo ""
 	@echo "Run targets:"
-	@echo "  run-discovery     Run discovery engine"
-	@echo "  run-mcp           Run MCP server"
+	@echo "  run               Run MCP server"
 	@echo ""
 	@echo "Development targets:"
-	@echo "  test              Run unit tests"
-	@echo "  bench             Run benchmarks"
+	@echo "  test              Run comprehensive test suite (all tests)"
+	@echo "  diagnose          Run system diagnostics"
+	@echo "  fix               Run diagnostics and auto-fix issues"
 	@echo "  lint              Run golangci-lint"
-	@echo "  coverage          Generate test coverage report"
 	@echo "  clean             Clean build artifacts"
 	@echo "  install-tools     Install development tools"
 	@echo ""
 
 # Build binaries
-build: build-discovery build-mcp
-
-build-discovery:
-	@echo "Building discovery engine..."
-	@go build -o bin/uds-discovery cmd/uds-discovery/main.go
-
-build-mcp:
+build:
 	@echo "Building MCP server..."
-	@go build -o bin/uds-mcp cmd/uds-mcp/main.go
+	@go build -o bin/mcp-server ./cmd/server
 
 # Testing targets
-.PHONY: test test-unit test-integration test-benchmarks test-coverage test-coverage-html test-short test-race
+.PHONY: test
 
-# Run all tests
+# Run all tests - comprehensive test suite that includes everything
 test:
-	@echo "Running all tests..."
-	@go test -v -race ./...
+	@echo "Running comprehensive test suite..."
+	@echo "This includes: unit tests, integration tests, real NRDB tests, mock tests, performance tests, etc."
+	@echo ""
+	@python3 tests/test_all.py
 
-# Run unit tests only
-test-unit:
-	@echo "Running unit tests..."
-	@go test -v -race ./pkg/...
+# Run diagnostics
+diagnose:
+	@echo "Running system diagnostics..."
+	@python3 diagnose.py
 
-# Run integration tests
-test-integration:
-	@echo "Running integration tests..."
-	@go test -v -race ./tests/integration/... -tags=integration
-
-# Run benchmark tests
-test-benchmarks:
-	@echo "Running benchmark tests..."
-	@go test -bench=. -benchmem -run=^$$ ./tests/benchmarks/...
-
-# Run tests with coverage
-test-coverage:
-	@echo "Running tests with coverage..."
-	@./scripts/test-coverage.sh
-
-# Open coverage report in browser
-test-coverage-html: test-coverage
-	@echo "Opening coverage report..."
-	@open coverage/coverage.html || xdg-open coverage/coverage.html
-
-# Run short tests only
-test-short:
-	@echo "Running short tests..."
-	@go test -v -short ./...
-
-# Run tests with race detector
-test-race:
-	@echo "Running tests with race detector..."
-	@go test -race ./...
-
-# Legacy aliases
-coverage: test-coverage
-bench: test-benchmarks
+# Run diagnostics and auto-fix
+fix:
+	@echo "Running diagnostics with auto-fix..."
+	@python3 diagnose.py --fix
 
 # Run linter
 lint:
@@ -90,7 +54,7 @@ lint:
 # Clean build artifacts
 clean:
 	@echo "Cleaning..."
-	@rm -rf bin/ coverage.out coverage.html
+	@rm -rf bin/ coverage.out coverage.html test_report_*.json
 
 # Install development tools
 install-tools:
@@ -119,12 +83,20 @@ proto-python:
 		--grpc_python_out=. \
 		pkg/intelligence/proto/intelligence.proto
 
-# Run the discovery server
-run-discovery: build-discovery
-	@echo "Running discovery server..."
-	@./bin/uds-discovery
-
-# Run the MCP server
-run-mcp: build-mcp
+# Run the server
+run: build
 	@echo "Running MCP server..."
-	@./bin/uds-mcp
+	@./bin/mcp-server
+
+# Development helpers
+dev:
+	@echo "Starting development server with auto-reload..."
+	@go run ./cmd/server
+
+format:
+	@echo "Formatting code..."
+	@go fmt ./...
+
+tidy:
+	@echo "Tidying dependencies..."
+	@go mod tidy

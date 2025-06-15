@@ -2,21 +2,26 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
+	"github.com/deepaucksharma/mcp-server-newrelic/pkg/auth"
+	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
 // Server represents the REST API server
 type Server struct {
-	router     *mux.Router
-	httpServer *http.Server
-	handler    *Handler
-	config     Config
+	router        *mux.Router
+	httpServer    *http.Server
+	handler       *Handler
+	config        Config
+	jwtManager    *auth.JWTManager
+	apiKeyManager *auth.APIKeyManager
+	nrApp         interface{} // *newrelic.Application, but using interface{} to avoid import
 }
 
 // Config holds API server configuration
@@ -31,12 +36,34 @@ type Config struct {
 	RateLimitPerMin int
 }
 
+// SetNewRelicApp sets the New Relic application for APM instrumentation
+func (s *Server) SetNewRelicApp(app interface{}) {
+	s.nrApp = app
+}
+
 // NewServer creates a new REST API server
 func NewServer(config Config, handler *Handler) *Server {
+	// Initialize JWT manager
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "default-jwt-secret-change-in-production"
+	}
+	jwtManager := auth.NewJWTManager(jwtSecret, "uds-api", 24*time.Hour)
+
+	// Initialize API key manager
+	apiKeySalt := os.Getenv("API_KEY_SALT")
+	if apiKeySalt == "" {
+		apiKeySalt = "default-api-key-salt-change-in-production"
+	}
+	apiKeyStore := auth.NewInMemoryAPIKeyStore()
+	apiKeyManager := auth.NewAPIKeyManager(apiKeySalt, apiKeyStore)
+
 	s := &Server{
-		router:  mux.NewRouter(),
-		handler: handler,
-		config:  config,
+		router:        mux.NewRouter(),
+		handler:       handler,
+		config:        config,
+		jwtManager:    jwtManager,
+		apiKeyManager: apiKeyManager,
 	}
 
 	// Setup routes
@@ -88,23 +115,39 @@ func (s *Server) Stop(ctx context.Context) error {
 func (s *Server) setupRoutes() {
 	api := s.router.PathPrefix("/api/v1").Subrouter()
 
-	// Health endpoints
+	// Public endpoints (no auth required)
 	api.HandleFunc("/health", s.handler.GetHealth).Methods("GET")
+	
+	// Auth endpoints
+	api.HandleFunc("/auth/login", s.handleLogin).Methods("POST")
+	api.HandleFunc("/auth/refresh", s.handleRefreshToken).Methods("POST")
+	api.HandleFunc("/auth/logout", s.handleLogout).Methods("POST")
+	
+	// API key management endpoints (require JWT auth)
+	authAPI := api.PathPrefix("").Subrouter()
+	authAPI.Use(auth.RequireAuth(s.jwtManager, nil))
+	authAPI.HandleFunc("/apikeys", s.handleListAPIKeys).Methods("GET")
+	authAPI.HandleFunc("/apikeys", s.handleCreateAPIKey).Methods("POST")
+	authAPI.HandleFunc("/apikeys/{id}", s.handleRevokeAPIKey).Methods("DELETE")
 
+	// Protected endpoints (require auth)
+	protected := api.PathPrefix("").Subrouter()
+	protected.Use(auth.RequireAuth(s.jwtManager, s.apiKeyManager))
+	
 	// Discovery endpoints
-	api.HandleFunc("/discovery/schemas", s.handler.ListSchemas).Methods("GET")
-	api.HandleFunc("/discovery/schemas/{eventType}", s.handler.GetSchemaProfile).Methods("GET")
-	api.HandleFunc("/discovery/relationships", s.handler.FindRelationships).Methods("POST")
-	api.HandleFunc("/discovery/quality/{eventType}", s.handler.AssessQuality).Methods("GET")
+	protected.HandleFunc("/discovery/schemas", s.handler.ListSchemas).Methods("GET")
+	protected.HandleFunc("/discovery/schemas/{eventType}", s.handler.GetSchemaProfile).Methods("GET")
+	protected.HandleFunc("/discovery/relationships", s.handler.FindRelationships).Methods("POST")
+	protected.HandleFunc("/discovery/quality/{eventType}", s.handler.AssessQuality).Methods("GET")
 
 	// Pattern analysis endpoints
-	api.HandleFunc("/patterns/analyze", s.handler.AnalyzePatterns).Methods("POST")
+	protected.HandleFunc("/patterns/analyze", s.handler.AnalyzePatterns).Methods("POST")
 
 	// Query generation endpoints
-	api.HandleFunc("/query/generate", s.handler.GenerateQuery).Methods("POST")
+	protected.HandleFunc("/query/generate", s.handler.GenerateQuery).Methods("POST")
 
 	// Dashboard endpoints
-	api.HandleFunc("/dashboard/create", s.handler.CreateDashboard).Methods("POST")
+	protected.HandleFunc("/dashboard/create", s.handler.CreateDashboard).Methods("POST")
 
 	// Swagger UI
 	if s.config.EnableSwagger {
@@ -115,6 +158,16 @@ func (s *Server) setupRoutes() {
 
 // setupMiddleware configures middleware
 func (s *Server) setupMiddleware() {
+	// New Relic APM middleware (should be first)
+	if app, ok := s.nrApp.(*newrelic.Application); ok && app != nil {
+		s.router.Use(newRelicMiddleware(app))
+		
+		// Also set the app on the handler
+		if s.handler != nil {
+			s.handler.SetNewRelicApp(app)
+		}
+	}
+
 	// Request logging
 	s.router.Use(loggingMiddleware)
 
@@ -154,17 +207,4 @@ func (s *Server) serveOpenAPISpec(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "./openapi.yaml")
 }
 
-// Helper functions for JSON responses
-func writeJSON(w http.ResponseWriter, status int, data interface{}) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	return json.NewEncoder(w).Encode(data)
-}
-
-func writeError(w http.ResponseWriter, status int, err string, details interface{}) {
-	writeJSON(w, status, map[string]interface{}{
-		"error":   err,
-		"message": err,
-		"details": details,
-	})
-}
+// Helper functions are in helpers.go

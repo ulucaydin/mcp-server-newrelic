@@ -1,0 +1,171 @@
+{
+  "name": "MCP Server for New Relic - Alert Policy",
+  "incident_preference": "PER_CONDITION_AND_TARGET",
+  "conditions": [
+    {
+      "name": "High Error Rate",
+      "type": "apm_app_metric",
+      "enabled": true,
+      "entities": ["mcp-server-newrelic", "intelligence-engine"],
+      "metric": "error_percentage",
+      "condition_scope": "application",
+      "terms": [
+        {
+          "duration": 5,
+          "operator": "above",
+          "priority": "critical",
+          "threshold": 5,
+          "time_function": "all"
+        },
+        {
+          "duration": 5,
+          "operator": "above", 
+          "priority": "warning",
+          "threshold": 2,
+          "time_function": "all"
+        }
+      ]
+    },
+    {
+      "name": "Slow Response Time",
+      "type": "apm_app_metric",
+      "enabled": true,
+      "entities": ["mcp-server-newrelic", "intelligence-engine"],
+      "metric": "response_time_web",
+      "condition_scope": "application",
+      "terms": [
+        {
+          "duration": 5,
+          "operator": "above",
+          "priority": "critical",
+          "threshold": 1000,
+          "time_function": "all"
+        },
+        {
+          "duration": 5,
+          "operator": "above",
+          "priority": "warning", 
+          "threshold": 500,
+          "time_function": "all"
+        }
+      ]
+    },
+    {
+      "name": "Low Apdex Score",
+      "type": "apm_app_metric",
+      "enabled": true,
+      "entities": ["mcp-server-newrelic", "intelligence-engine"],
+      "metric": "apdex",
+      "condition_scope": "application",
+      "terms": [
+        {
+          "duration": 5,
+          "operator": "below",
+          "priority": "critical",
+          "threshold": 0.7,
+          "time_function": "all"
+        },
+        {
+          "duration": 5,
+          "operator": "below",
+          "priority": "warning",
+          "threshold": 0.85,
+          "time_function": "all"
+        }
+      ]
+    },
+    {
+      "name": "Discovery Engine Failure",
+      "type": "nrql",
+      "enabled": true,
+      "nrql": {
+        "query": "SELECT percentage(count(*), WHERE error IS TRUE) FROM Transaction WHERE appName = 'mcp-server-newrelic' AND name LIKE '%DiscoverSchemas%'"
+      },
+      "terms": [
+        {
+          "duration": 5,
+          "operator": "above",
+          "priority": "critical",
+          "threshold": 10,
+          "time_function": "all"
+        }
+      ]
+    },
+    {
+      "name": "Low Cache Hit Rate",
+      "type": "nrql",
+      "enabled": true,
+      "nrql": {
+        "query": "SELECT percentage(count(*), WHERE `cache.hit` IS TRUE) FROM Transaction WHERE appName = 'mcp-server-newrelic' AND name LIKE '%DiscoverSchemas%'"
+      },
+      "terms": [
+        {
+          "duration": 10,
+          "operator": "below",
+          "priority": "warning",
+          "threshold": 50,
+          "time_function": "all"
+        }
+      ]
+    },
+    {
+      "name": "Pattern Analysis Timeout",
+      "type": "nrql",
+      "enabled": true,
+      "nrql": {
+        "query": "SELECT average(newrelic.timeslice.value) FROM Metric WHERE metricTimesliceName = 'Custom/Intelligence/PatternAnalysis/Duration'"
+      },
+      "terms": [
+        {
+          "duration": 5,
+          "operator": "above",
+          "priority": "critical",
+          "threshold": 30000,
+          "time_function": "all"
+        },
+        {
+          "duration": 5,
+          "operator": "above",
+          "priority": "warning",
+          "threshold": 15000,
+          "time_function": "all"
+        }
+      ]
+    },
+    {
+      "name": "Query Generation Low Confidence",
+      "type": "nrql",
+      "enabled": true,
+      "nrql": {
+        "query": "SELECT average(newrelic.timeslice.value) FROM Metric WHERE metricTimesliceName = 'Custom/Intelligence/QueryGeneration/Confidence'"
+      },
+      "terms": [
+        {
+          "duration": 10,
+          "operator": "below",
+          "priority": "warning",
+          "threshold": 0.7,
+          "time_function": "all"
+        }
+      ]
+    }
+  ],
+  "channels": [
+    {
+      "name": "MCP Server Alerts - Email",
+      "type": "email",
+      "configuration": {
+        "recipients": "team@example.com",
+        "include_json_attachment": true
+      }
+    },
+    {
+      "name": "MCP Server Alerts - Slack",
+      "type": "slack",
+      "configuration": {
+        "url": "${SLACK_WEBHOOK_URL}",
+        "channel": "#mcp-server-alerts"
+      }
+    }
+  ]
+}

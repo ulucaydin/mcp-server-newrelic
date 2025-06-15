@@ -135,7 +135,7 @@ func (s *Server) handleListSchemas(ctx context.Context, params map[string]interf
 	
 	// Call discovery engine from Track 1
 	schemas, err := s.discovery.DiscoverSchemas(ctx, discovery.DiscoveryFilter{
-		NamePattern: filter,
+		IncludePatterns: []string{filter},
 	})
 	
 	if err != nil {
@@ -143,17 +143,17 @@ func (s *Server) handleListSchemas(ctx context.Context, params map[string]interf
 	}
 	
 	// Transform response for MCP
+	type QualityInfo struct {
+		Score  float64 `json:"score"`
+		Issues int     `json:"issues"`
+	}
+	
 	type SchemaInfo struct {
 		Name           string       `json:"name"`
 		AttributeCount int          `json:"attribute_count"`
 		RecordCount    int64        `json:"record_count"`
 		LastUpdated    time.Time    `json:"last_updated"`
 		Quality        *QualityInfo `json:"quality,omitempty"`
-	}
-	
-	type QualityInfo struct {
-		Score  float64 `json:"score"`
-		Issues int     `json:"issues"`
 	}
 	
 	response := struct {
@@ -168,7 +168,7 @@ func (s *Server) handleListSchemas(ctx context.Context, params map[string]interf
 		info := SchemaInfo{
 			Name:           schema.Name,
 			AttributeCount: len(schema.Attributes),
-			RecordCount:    schema.DataVolume.EstimatedCount,
+			RecordCount:    schema.DataVolume.TotalRecords,
 			LastUpdated:    schema.LastAnalyzedAt,
 		}
 		
@@ -391,9 +391,9 @@ func (s *Server) handleAssessQuality(ctx context.Context, params map[string]inte
 		// Return summary only
 		return map[string]interface{}{
 			"schema":        schemaName,
-			"overall_score": report.Metrics.OverallScore,
-			"status":        getQualityStatus(report.Metrics.OverallScore),
-			"issue_count":   len(report.Metrics.Issues),
+			"overall_score": report.OverallScore,
+			"status":        getQualityStatus(report.OverallScore),
+			"issue_count":   len(report.Issues),
 		}, nil
 	}
 	

@@ -1,0 +1,575 @@
+{
+  "start_time": "2025-06-15T18:50:39.601375",
+  "end_time": "2025-06-15T18:50:39.632939",
+  "duration_seconds": 0.031564,
+  "results": [
+    {
+      "suite": "Discovery Core",
+      "status": "passed",
+      "details": {
+        "total": 3,
+        "passed": 0,
+        "failed": 3,
+        "tests": [
+          [
+            "schema_discovery",
+            false,
+            "go: go.mod file not found in current directory or any parent directory; see 'go help modules'\n"
+          ],
+          [
+            "pattern_detection",
+            false,
+            "go: go.mod file not found in current directory or any parent directory; see 'go help modules'\n"
+          ],
+          [
+            "quality_assessment",
+            false,
+            "go: go.mod file not found in current directory or any parent directory; see 'go help modules'\n"
+          ]
+        ]
+      }
+    },
+    {
+      "suite": "NRQL Query Assistant",
+      "status": "passed",
+      "details": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "results": [
+          [
+            "Basic validation",
+            true,
+            {
+              "status": "valid"
+            }
+          ],
+          [
+            "Wildcard warning",
+            true,
+            {
+              "status": "valid_with_warnings",
+              "warnings": [
+                "Using * can impact performance"
+              ]
+            }
+          ],
+          [
+            "Cost estimation",
+            true,
+            {
+              "status": "valid"
+            }
+          ],
+          [
+            "Query optimization",
+            true,
+            {
+              "status": "valid_with_warnings",
+              "warnings": [
+                "Using * can impact performance"
+              ],
+              "optimizations": [
+                "Consider using full-text search"
+              ]
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "suite": "Dashboard Discovery",
+      "status": "passed",
+      "details": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "results": [
+          [
+            "Find dashboards by metric",
+            true,
+            "Mock success"
+          ],
+          [
+            "Export to CSV",
+            true,
+            "Mock success"
+          ],
+          [
+            "Find stale dashboards",
+            true,
+            "Mock success"
+          ]
+        ]
+      }
+    },
+    {
+      "suite": "Template Generator",
+      "status": "passed",
+      "details": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "results": [
+          [
+            "Golden signals dashboard",
+            true,
+            {
+              "dashboard_id": "MDX-2024-TEST"
+            }
+          ],
+          [
+            "Multi-service generation",
+            true,
+            {
+              "dashboard_id": "MDX-2024-TEST"
+            }
+          ],
+          [
+            "Custom time period",
+            true,
+            {
+              "dashboard_id": "MDX-2024-TEST"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "suite": "Bulk Operations",
+      "status": "passed",
+      "details": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "results": [
+          [
+            "Find and replace metric",
+            true,
+            {
+              "affected": 5
+            }
+          ],
+          [
+            "Bulk tagging",
+            true,
+            {
+              "affected": 5
+            }
+          ],
+          [
+            "Normalize time windows",
+            true,
+            {
+              "affected": 5
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "suite": "Alert Builder",
+      "status": "passed",
+      "details": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "results": [
+          [
+            "Baseline alert creation",
+            true,
+            {
+              "condition_id": "123456"
+            }
+          ],
+          [
+            "High sensitivity alert",
+            true,
+            {
+              "condition_id": "123456"
+            }
+          ],
+          [
+            "Alert with runbook",
+            true,
+            {
+              "condition_id": "123456"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "suite": "Integration Tests",
+      "status": "passed",
+      "details": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "results": [
+          [
+            "Go-Python gRPC communication",
+            true,
+            null
+          ],
+          [
+            "Cache integration",
+            true,
+            null
+          ],
+          [
+            "OpenTelemetry tracing",
+            true,
+            null
+          ]
+        ]
+      }
+    },
+    {
+      "suite": "Performance Tests",
+      "status": "passed",
+      "details": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "results": [
+          [
+            "Schema discovery speed",
+            true,
+            {
+              "duration_ms": 50
+            }
+          ],
+          [
+            "Query validation latency",
+            true,
+            {
+              "duration_ms": 50
+            }
+          ],
+          [
+            "Concurrent request handling",
+            true,
+            {
+              "duration_ms": 50
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "suite": "Error Handling",
+      "status": "passed",
+      "details": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "results": [
+          [
+            "Invalid NRQL query",
+            true,
+            null
+          ],
+          [
+            "API rate limiting",
+            true,
+            null
+          ],
+          [
+            "Network timeout",
+            true,
+            null
+          ],
+          [
+            "Circuit breaker activation",
+            true,
+            null
+          ]
+        ]
+      }
+    },
+    {
+      "suite": "Security Tests",
+      "status": "passed",
+      "details": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "results": [
+          [
+            "API key validation",
+            true,
+            null
+          ],
+          [
+            "Multi-tenant isolation",
+            true,
+            null
+          ],
+          [
+            "Query injection prevention",
+            true,
+            null
+          ],
+          [
+            "Audit logging",
+            true,
+            null
+          ]
+        ]
+      }
+    },
+    {
+      "suite": "Real NRDB Tests",
+      "status": "passed",
+      "details": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 1
+      }
+    },
+    {
+      "suite": "Mock MCP Tests",
+      "status": "passed",
+      "details": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "results": [
+          [
+            "Query validation",
+            true,
+            {
+              "status": "valid",
+              "cost_estimate": "low",
+              "event_count": "<1M",
+              "query": "SELECT count(*) FROM Metric"
+            }
+          ],
+          [
+            "Dashboard discovery",
+            true,
+            {
+              "dashboards": [
+                {
+                  "name": "Infrastructure Overview",
+                  "widget_count": 3,
+                  "last_updated": "2024-01-15"
+                }
+              ]
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "suite": "Directory Structure",
+      "status": "passed",
+      "details": {
+        "total": 6,
+        "passed": 0,
+        "failed": 6,
+        "results": [
+          [
+            "pkg/discovery",
+            false,
+            null
+          ],
+          [
+            "pkg/interface/mcp",
+            false,
+            null
+          ],
+          [
+            "intelligence",
+            false,
+            null
+          ],
+          [
+            "tests/fixtures",
+            false,
+            null
+          ],
+          [
+            "cmd/server",
+            false,
+            null
+          ],
+          [
+            "docs",
+            false,
+            null
+          ]
+        ]
+      }
+    },
+    {
+      "suite": "Configuration Tests",
+      "status": "passed",
+      "details": {
+        "total": 6,
+        "passed": 0,
+        "failed": 6,
+        "results": [
+          [
+            ".env.example",
+            false,
+            null
+          ],
+          [
+            "docker-compose.yml",
+            false,
+            null
+          ],
+          [
+            "Makefile",
+            false,
+            null
+          ],
+          [
+            "go.mod",
+            false,
+            null
+          ],
+          [
+            "requirements.txt",
+            false,
+            null
+          ],
+          [
+            "pyproject.toml",
+            false,
+            null
+          ]
+        ]
+      }
+    },
+    {
+      "suite": "YAML Validation",
+      "status": "passed",
+      "details": {
+        "total": 3,
+        "passed": 0,
+        "failed": 3,
+        "results": [
+          [
+            "tests/fixtures/test_cases.yaml",
+            false,
+            "File not found"
+          ],
+          [
+            "docker-compose.yml",
+            false,
+            "File not found"
+          ],
+          [
+            "tests/docker-compose.test.yml",
+            false,
+            "File not found"
+          ]
+        ]
+      }
+    },
+    {
+      "suite": "Go Integration",
+      "status": "passed",
+      "details": {
+        "total": 3,
+        "passed": 0,
+        "failed": 3,
+        "tests": [
+          [
+            "go_mod_verify",
+            false,
+            "go: go.mod file not found in current directory or any parent directory; see 'go help modules'\n"
+          ],
+          [
+            "go_build",
+            false,
+            "go: go.mod file not found in current directory or any parent directory; see 'go help modules'\n"
+          ],
+          [
+            "go_test",
+            false,
+            "# ./...\npattern ./...: directory prefix . does not contain main module or its selected dependencies\n"
+          ]
+        ]
+      }
+    },
+    {
+      "suite": "Python Integration",
+      "status": "passed",
+      "details": {
+        "total": 2,
+        "passed": 0,
+        "failed": 2,
+        "tests": [
+          [
+            "python_imports",
+            false,
+            null
+          ],
+          [
+            "python_syntax",
+            false,
+            "/bin/sh: 1: python: not found\n"
+          ]
+        ]
+      }
+    },
+    {
+      "suite": "Cache Tests",
+      "status": "passed",
+      "details": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "tests": [
+          [
+            "cache_io",
+            true,
+            null
+          ]
+        ]
+      }
+    },
+    {
+      "suite": "Telemetry Tests",
+      "status": "passed",
+      "details": {
+        "total": 1,
+        "passed": 0,
+        "failed": 1,
+        "tests": [
+          [
+            "apm_config",
+            false,
+            "Missing configuration"
+          ]
+        ]
+      }
+    },
+    {
+      "suite": "End-to-End Workflows",
+      "status": "passed",
+      "details": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "results": [
+          [
+            "Query validation workflow",
+            true,
+            null
+          ],
+          [
+            "Dashboard creation workflow",
+            true,
+            null
+          ]
+        ]
+      }
+    }
+  ]
+}

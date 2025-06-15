@@ -1,0 +1,141 @@
+version: '3.8'
+
+services:
+  # Intelligence Engine (Python)
+  intelligence-engine:
+    build:
+      context: ./intelligence
+      dockerfile: Dockerfile
+    image: uds-intelligence:latest
+    container_name: uds-intelligence
+    ports:
+      - "50051:50051"  # gRPC port
+      - "8080:8080"    # Metrics port
+    volumes:
+      - ./config:/app/config:ro
+      - intelligence-models:/app/models
+      - ./logs/intelligence:/app/logs
+    environment:
+      - NEW_RELIC_API_KEY=${NEW_RELIC_API_KEY}
+      - NEW_RELIC_ACCOUNT_ID=${NEW_RELIC_ACCOUNT_ID}
+      - INTELLIGENCE_LOG_LEVEL=${INTELLIGENCE_LOG_LEVEL:-INFO}
+      - INTELLIGENCE_GRPC_HOST=0.0.0.0
+      - INTELLIGENCE_GRPC_PORT=50051
+      - INTELLIGENCE_ENABLE_METRICS=true
+      - INTELLIGENCE_METRICS_PORT=8080
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import grpc; channel = grpc.insecure_channel('localhost:50051'); exit(0 if channel.channel_ready() else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - uds-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  # MCP Server (Go)
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mcp-server-newrelic:latest
+    container_name: mcp-server-newrelic
+    ports:
+      - "3333:3333"   # MCP stdio/SSE port
+      - "8080:8080"   # REST API port
+      - "8081:8081"   # MCP HTTP port
+    volumes:
+      - ./config:/app/config:ro
+      - ./logs:/app/logs
+      - ./data:/app/data
+    environment:
+      # New Relic Configuration
+      - NEW_RELIC_API_KEY=${NEW_RELIC_API_KEY}
+      - NEW_RELIC_ACCOUNT_ID=${NEW_RELIC_ACCOUNT_ID}
+      - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
+      - NEW_RELIC_APP_NAME=${NEW_RELIC_APP_NAME:-mcp-server-newrelic}
+      - NEW_RELIC_REGION=${NEW_RELIC_REGION:-US}
+      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-mcp-server-newrelic}
+      # Server Configuration
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - MCP_ENABLED=true
+      - API_ENABLED=true
+      - MCP_TRANSPORT=${MCP_TRANSPORT:-stdio}
+      - MCP_HTTP_PORT=8081
+      - MCP_SSE_PORT=8082
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080
+      # Auth Configuration
+      - JWT_SECRET=${JWT_SECRET}
+      - API_KEY_SALT=${API_KEY_SALT}
+      # Rate Limiting
+      - RATE_LIMIT_PER_MIN=60
+      - SWAGGER_ENABLED=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - uds-network
+    depends_on:
+      - redis
+
+  # New Relic monitoring is handled by APM agent in the application
+  # No separate monitoring containers needed
+
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: uds-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - uds-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: uds-jaeger
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"  # UI
+      - "14268:14268"
+      - "14250:14250"
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+    networks:
+      - uds-network
+
+networks:
+  uds-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+volumes:
+  intelligence-models:
+    driver: local
+  redis-data:
+    driver: local

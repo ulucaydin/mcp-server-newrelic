@@ -1,0 +1,317 @@
+syntax = "proto3";
+
+package discovery;
+
+option go_package = "github.com/deepaucksharma/mcp-server-newrelic/pkg/discovery/proto";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/struct.proto";
+
+// DiscoveryService provides schema discovery and analysis capabilities
+service DiscoveryService {
+  // DiscoverSchemas discovers available schemas in New Relic
+  rpc DiscoverSchemas(DiscoverSchemasRequest) returns (DiscoverSchemasResponse);
+  
+  // ProfileSchema profiles a specific schema with detailed analysis
+  rpc ProfileSchema(ProfileSchemaRequest) returns (ProfileSchemaResponse);
+  
+  // IntelligentDiscovery performs AI-guided schema discovery
+  rpc IntelligentDiscovery(IntelligentDiscoveryRequest) returns (IntelligentDiscoveryResponse);
+  
+  // FindRelationships discovers relationships between schemas
+  rpc FindRelationships(FindRelationshipsRequest) returns (FindRelationshipsResponse);
+  
+  // AssessQuality assesses data quality for a schema
+  rpc AssessQuality(AssessQualityRequest) returns (AssessQualityResponse);
+  
+  // GetHealth returns the health status of the discovery engine
+  rpc GetHealth(GetHealthRequest) returns (GetHealthResponse);
+  
+  // StreamSchemas provides real-time schema updates
+  rpc StreamSchemas(StreamSchemasRequest) returns (stream Schema);
+}
+
+// Common data types
+
+message Schema {
+  string id = 1;
+  string name = 2;
+  string event_type = 3;
+  repeated Attribute attributes = 4;
+  int64 sample_count = 5;
+  DataVolumeProfile data_volume = 6;
+  QualityMetrics quality = 7;
+  repeated DetectedPattern patterns = 8;
+  google.protobuf.Timestamp discovered_at = 9;
+  google.protobuf.Timestamp last_analyzed_at = 10;
+  google.protobuf.Struct metadata = 11;
+}
+
+message Attribute {
+  string name = 1;
+  string data_type = 2;
+  string semantic_type = 3;
+  bool is_required = 4;
+  bool is_unique = 5;
+  bool is_indexed = 6;
+  double cardinality = 7;
+  repeated string sample_values = 8;
+  ValueDistribution distribution = 9;
+  repeated DetectedPattern patterns = 10;
+  google.protobuf.Struct metadata = 11;
+}
+
+message ValueDistribution {
+  double min = 1;
+  double max = 2;
+  double mean = 3;
+  double median = 4;
+  double std_dev = 5;
+  map<string, int64> histogram = 6;
+  repeated Percentile percentiles = 7;
+}
+
+message Percentile {
+  double percentile = 1;
+  double value = 2;
+}
+
+message DataVolumeProfile {
+  int64 total_events = 1;
+  double events_per_minute = 2;
+  int64 data_size_bytes = 3;
+  google.protobuf.Timestamp first_seen = 4;
+  google.protobuf.Timestamp last_seen = 5;
+  repeated VolumeByTime volume_timeline = 6;
+}
+
+message VolumeByTime {
+  google.protobuf.Timestamp timestamp = 1;
+  int64 event_count = 2;
+  int64 data_size_bytes = 3;
+}
+
+message QualityMetrics {
+  double overall_score = 1;
+  QualityDimensions dimensions = 2;
+  repeated QualityIssue issues = 3;
+  repeated QualityRecommendation recommendations = 4;
+}
+
+message QualityDimensions {
+  QualityDimension completeness = 1;
+  QualityDimension consistency = 2;
+  QualityDimension timeliness = 3;
+  QualityDimension uniqueness = 4;
+  QualityDimension validity = 5;
+}
+
+message QualityDimension {
+  double score = 1;
+  repeated string issues = 2;
+  google.protobuf.Struct details = 3;
+}
+
+message QualityIssue {
+  string severity = 1;
+  string type = 2;
+  string description = 3;
+  repeated string affected_attributes = 4;
+  int64 occurrence_count = 5;
+}
+
+message QualityRecommendation {
+  string priority = 1;
+  string type = 2;
+  string description = 3;
+  double impact_score = 4;
+  double effort_score = 5;
+}
+
+message DetectedPattern {
+  string type = 1;
+  string subtype = 2;
+  double confidence = 3;
+  string description = 4;
+  google.protobuf.Struct parameters = 5;
+  repeated string affected_attributes = 6;
+}
+
+message Relationship {
+  string id = 1;
+  string type = 2;
+  string source_schema = 3;
+  string target_schema = 4;
+  repeated JoinCondition join_conditions = 5;
+  double strength = 6;
+  double confidence = 7;
+  int64 sample_matches = 8;
+  google.protobuf.Struct metadata = 9;
+}
+
+message JoinCondition {
+  string source_attribute = 1;
+  string target_attribute = 2;
+  string operator = 3;
+}
+
+// Request/Response messages
+
+message DiscoverSchemasRequest {
+  string account_id = 1;
+  string pattern = 2;
+  int32 max_schemas = 3;
+  repeated string event_types = 4;
+  google.protobuf.Duration time_range = 5;
+  map<string, string> tags = 6;
+}
+
+message DiscoverSchemasResponse {
+  repeated Schema schemas = 1;
+  int32 total_count = 2;
+  google.protobuf.Duration discovery_duration = 3;
+  map<string, string> metadata = 4;
+}
+
+message ProfileSchemaRequest {
+  string event_type = 1;
+  string profile_depth = 2; // basic, standard, deep
+  bool include_patterns = 3;
+  bool include_quality = 4;
+  int32 sample_size = 5;
+  google.protobuf.Duration time_range = 6;
+}
+
+message ProfileSchemaResponse {
+  Schema schema = 1;
+  google.protobuf.Duration profiling_duration = 2;
+  map<string, string> metadata = 3;
+}
+
+message IntelligentDiscoveryRequest {
+  repeated string focus_areas = 1;
+  repeated string event_types = 2;
+  bool anomaly_detection = 3;
+  bool pattern_mining = 4;
+  bool quality_assessment = 5;
+  double confidence_threshold = 6;
+  map<string, string> context = 7;
+}
+
+message IntelligentDiscoveryResponse {
+  repeated Schema schemas = 1;
+  repeated DiscoveryInsight insights = 2;
+  repeated string recommendations = 3;
+  google.protobuf.Duration discovery_duration = 4;
+}
+
+message DiscoveryInsight {
+  string type = 1;
+  string severity = 2;
+  string title = 3;
+  string description = 4;
+  repeated string affected_schemas = 5;
+  double confidence = 6;
+  google.protobuf.Struct evidence = 7;
+}
+
+message FindRelationshipsRequest {
+  repeated string schema_names = 1;
+  repeated string relationship_types = 2;
+  double min_confidence = 3;
+  int32 max_relationships = 4;
+  bool include_weak_relationships = 5;
+}
+
+message FindRelationshipsResponse {
+  repeated Relationship relationships = 1;
+  RelationshipGraph graph = 2;
+  google.protobuf.Duration analysis_duration = 3;
+}
+
+message RelationshipGraph {
+  repeated GraphNode nodes = 1;
+  repeated GraphEdge edges = 2;
+  map<string, string> properties = 3;
+}
+
+message GraphNode {
+  string id = 1;
+  string schema_name = 2;
+  map<string, string> properties = 3;
+}
+
+message GraphEdge {
+  string source = 1;
+  string target = 2;
+  string relationship_id = 3;
+  double weight = 4;
+}
+
+message AssessQualityRequest {
+  string event_type = 1;
+  int32 sample_size = 2;
+  google.protobuf.Duration time_range = 3;
+  repeated string quality_dimensions = 4;
+  bool detailed_analysis = 5;
+}
+
+message AssessQualityResponse {
+  QualityReport report = 1;
+  google.protobuf.Duration assessment_duration = 2;
+}
+
+message QualityReport {
+  string event_type = 1;
+  double overall_score = 2;
+  QualityDimensions dimensions = 3;
+  repeated QualityIssue issues = 4;
+  repeated QualityRecommendation recommendations = 5;
+  google.protobuf.Timestamp assessed_at = 6;
+  map<string, string> metadata = 7;
+}
+
+message GetHealthRequest {
+  bool include_metrics = 1;
+}
+
+message GetHealthResponse {
+  bool is_healthy = 1;
+  string status = 2;
+  repeated HealthCheck checks = 3;
+  HealthMetrics metrics = 4;
+  google.protobuf.Timestamp timestamp = 5;
+}
+
+message HealthCheck {
+  string name = 1;
+  bool is_healthy = 2;
+  string message = 3;
+  google.protobuf.Duration duration = 4;
+}
+
+message HealthMetrics {
+  int64 queries_processed = 1;
+  int64 errors_count = 2;
+  double cache_hit_rate = 3;
+  google.protobuf.Duration uptime = 4;
+  double average_query_time_ms = 5;
+  int64 active_connections = 6;
+  map<string, double> custom_metrics = 7;
+}
+
+message StreamSchemasRequest {
+  string account_id = 1;
+  repeated string event_types = 2;
+  bool include_updates = 3;
+  bool include_new_schemas = 4;
+  google.protobuf.Duration poll_interval = 5;
+}
+
+// Error details
+message ErrorDetail {
+  string code = 1;
+  string message = 2;
+  map<string, string> metadata = 3;
+}

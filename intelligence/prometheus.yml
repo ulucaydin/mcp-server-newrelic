@@ -1,0 +1,18 @@
+# Prometheus configuration for Intelligence Engine metrics
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'intelligence-engine'
+    static_configs:
+      - targets: ['intelligence-engine:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+    
+    # Add labels to identify the service
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'intelligence-engine'

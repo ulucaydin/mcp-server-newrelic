@@ -1,0 +1,92 @@
+{
+  "go": {
+    "mcp_tools": [
+      "discovery.list_schemas",
+      "discovery.profile_attribute",
+      "discovery.find_relationships",
+      "discovery.assess_quality",
+      "discovery.list_schemas",
+      "discovery.profile_attribute"
+    ],
+    "api_endpoints": [
+      "/api/v1",
+      "/swagger/",
+      "/openapi.yaml",
+      "/api/v1/discovery/schemas/{eventType}"
+    ],
+    "issues": [
+      {
+        "type": "import_cycle",
+        "description": "Import cycle between discovery and discovery/nrdb packages",
+        "severity": "blocking"
+      }
+    ],
+    "components": []
+  },
+  "python": {
+    "intelligence_features": [],
+    "pattern_detectors": [
+      "engine",
+      "correlation",
+      "timeseries",
+      "statistical",
+      "anomaly"
+    ],
+    "query_features": [
+      "query_generator",
+      "intent_parser",
+      "nrql_builder",
+      "query_optimizer"
+    ],
+    "visualization_features": [
+      "data_shape_analyzer",
+      "layout_optimizer",
+      "chart_recommender"
+    ]
+  },
+  "tests": {
+    "total": 52,
+    "categories": {
+      "nrql_query_assistant": 1,
+      "assertions": 45,
+      "dashboard_discovery": 1,
+      "template_generator": 1,
+      "bulk_operations": 1,
+      "jobs": 2,
+      "smart_alerts": 1
+    }
+  },
+  "servers": {
+    "go_servers": [
+      {
+        "name": "uds-discovery",
+        "path": "/home/deepak/src/mcp-server-newrelic/cmd/uds-discovery",
+        "buildable": false
+      },
+      {
+        "name": "uds-mcp",
+        "path": "/home/deepak/src/mcp-server-newrelic/cmd/uds-mcp",
+        "buildable": false
+      },
+      {
+        "name": "server",
+        "path": "/home/deepak/src/mcp-server-newrelic/cmd/server",
+        "buildable": false
+      },
+      {
+        "name": "api-server",
+        "path": "/home/deepak/src/mcp-server-newrelic/cmd/api-server",
+        "buildable": false
+      },
+      {
+        "name": "uds",
+        "path": "/home/deepak/src/mcp-server-newrelic/cmd/uds",
+        "buildable": false
+      }
+    ],
+    "python_servers": [],
+    "issues": [
+      "No Python MCP server implementation found"
+    ]
+  }
+}

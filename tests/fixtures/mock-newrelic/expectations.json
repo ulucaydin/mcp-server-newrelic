@@ -1,0 +1,93 @@
+[
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/graphql",
+      "body": {
+        "type": "JSON",
+        "json": {
+          "query": ".*actor.*nrql.*"
+        },
+        "matchType": "REGEX"
+      }
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "data": {
+          "actor": {
+            "account": {
+              "nrql": {
+                "results": [
+                  {
+                    "count": 42,
+                    "average.duration": 123.45,
+                    "timestamp": 1234567890
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/graphql",
+      "body": {
+        "type": "JSON",
+        "json": {
+          "query": ".*entitySearch.*"
+        },
+        "matchType": "REGEX"
+      }
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "data": {
+          "actor": {
+            "entitySearch": {
+              "results": {
+                "entities": [
+                  {
+                    "guid": "TEST-GUID-1",
+                    "name": "Test Application",
+                    "type": "APPLICATION",
+                    "domain": "APM"
+                  },
+                  {
+                    "guid": "TEST-GUID-2",
+                    "name": "Test Service",
+                    "type": "SERVICE",
+                    "domain": "APM"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/health"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "body": {
+        "status": "healthy"
+      }
+    }
+  }
+]

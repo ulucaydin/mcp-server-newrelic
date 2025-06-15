@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
 // Engine implements the DiscoveryEngine interface
@@ -30,6 +32,9 @@ type Engine struct {
 	// Context for graceful shutdown
 	ctx             context.Context
 	cancel          context.CancelFunc
+	
+	// New Relic APM
+	nrApp           *newrelic.Application
 }
 
 // NewEngine creates a new discovery engine
@@ -155,23 +160,54 @@ func (e *Engine) Stop(ctx context.Context) error {
 
 // DiscoverSchemas discovers all schemas matching the filter
 func (e *Engine) DiscoverSchemas(ctx context.Context, filter DiscoveryFilter) ([]Schema, error) {
+	// Start APM transaction if available
+	var txn *newrelic.Transaction
+	if e.nrApp != nil {
+		txn = e.nrApp.StartTransaction("DiscoverSchemas")
+		defer txn.End()
+		ctx = newrelic.NewContext(ctx, txn)
+		
+		// Add attributes
+		txn.AddAttribute("discovery.filter.max_schemas", filter.MaxSchemas)
+		txn.AddAttribute("discovery.filter.min_record_count", filter.MinRecordCount)
+	}
+	
 	startTime := time.Now()
 	defer func() {
-		e.metrics.RecordDiscoveryDuration(time.Since(startTime))
+		duration := time.Since(startTime)
+		e.metrics.RecordDiscoveryDuration(duration)
+		
+		// Record custom metric
+		if e.nrApp != nil {
+			e.nrApp.RecordCustomMetric("Discovery/DiscoverSchemas/Duration", float64(duration.Milliseconds()))
+		}
 	}()
 	
 	// Check cache first
 	cacheKey := generateCacheKey("schemas", filter)
 	if cached, found := e.cache.Get(cacheKey); found {
 		e.metrics.RecordCacheHit("schema")
+		if txn != nil {
+			txn.AddAttribute("cache.hit", true)
+		}
 		return cached.([]Schema), nil
 	}
 	e.metrics.RecordCacheMiss("schema")
+	if txn != nil {
+		txn.AddAttribute("cache.hit", false)
+	}
 	
 	// Discover event types
 	eventTypes, err := e.discoverEventTypes(ctx, filter)
 	if err != nil {
+		if txn != nil {
+			txn.NoticeError(err)
+		}
 		return nil, fmt.Errorf("discovering event types: %w", err)
+	}
+	
+	if txn != nil {
+		txn.AddAttribute("discovery.event_types.count", len(eventTypes))
 	}
 	
 	// Create tasks for parallel discovery
@@ -186,6 +222,14 @@ func (e *Engine) DiscoverSchemas(ctx context.Context, filter DiscoveryFilter) ([
 	// Execute parallel discovery
 	results := e.workerPool.ExecuteBatchTyped(ctx, tasks, func(ctx context.Context, task interface{}) (interface{}, error) {
 		dt := task.(DiscoveryTask)
+		
+		// Create segment for each schema discovery
+		if txn != nil {
+			segment := txn.StartSegment("discoverSingleSchema")
+			segment.AddAttribute("event_type", dt.EventType)
+			defer segment.End()
+		}
+		
 		return e.discoverSingleSchema(ctx, dt.EventType)
 	})
 	
@@ -206,6 +250,15 @@ func (e *Engine) DiscoverSchemas(ctx context.Context, filter DiscoveryFilter) ([
 	e.mu.Lock()
 	e.discoveryCount += int64(len(schemas))
 	e.mu.Unlock()
+	
+	// Record custom event
+	if e.nrApp != nil {
+		e.nrApp.RecordCustomEvent("SchemaDiscovery", map[string]interface{}{
+			"schemas_found": len(schemas),
+			"event_types":   len(eventTypes),
+			"cache_key":     cacheKey,
+		})
+	}
 	
 	return schemas, nil
 }
@@ -249,11 +302,30 @@ func (e *Engine) DiscoverWithIntelligence(ctx context.Context, hints DiscoveryHi
 
 // ProfileSchema performs deep profiling of a single schema
 func (e *Engine) ProfileSchema(ctx context.Context, eventType string, depth ProfileDepth) (*Schema, error) {
+	// Start APM transaction if available
+	var txn *newrelic.Transaction
+	if e.nrApp != nil {
+		txn = e.nrApp.StartTransaction("ProfileSchema")
+		defer txn.End()
+		ctx = newrelic.NewContext(ctx, txn)
+		
+		// Add attributes
+		txn.AddAttribute("schema.event_type", eventType)
+		txn.AddAttribute("profile.depth", string(depth))
+	}
+	
 	// Check cache
 	cacheKey := fmt.Sprintf("profile:%s:%s", eventType, depth)
 	if cached, found := e.cache.Get(cacheKey); found {
 		e.metrics.RecordCacheHit("profile")
+		if txn != nil {
+			txn.AddAttribute("cache.hit", true)
+		}
 		return cached.(*Schema), nil
+	}
+	
+	if txn != nil {
+		txn.AddAttribute("cache.hit", false)
 	}
 	
 	// Discover base schema
@@ -358,13 +430,50 @@ func (e *Engine) AssessQuality(ctx context.Context, schemaName string) (*Quality
 
 // FindRelationships discovers relationships between schemas
 func (e *Engine) FindRelationships(ctx context.Context, schemas []Schema) ([]Relationship, error) {
+	// Start APM transaction if available
+	var txn *newrelic.Transaction
+	if e.nrApp != nil {
+		txn = e.nrApp.StartTransaction("FindRelationships")
+		defer txn.End()
+		ctx = newrelic.NewContext(ctx, txn)
+		
+		// Add attributes
+		txn.AddAttribute("schemas.count", len(schemas))
+	}
+	
 	startTime := time.Now()
 	defer func() {
-		e.metrics.RecordDiscoveryDuration(time.Since(startTime))
+		duration := time.Since(startTime)
+		e.metrics.RecordDiscoveryDuration(duration)
+		
+		// Record custom metric
+		if e.nrApp != nil {
+			e.nrApp.RecordCustomMetric("Discovery/FindRelationships/Duration", float64(duration.Milliseconds()))
+		}
 	}()
 	
+	// Create segment for mining
+	if txn != nil {
+		segment := txn.StartSegment("RelationshipMiner.FindRelationships")
+		defer segment.End()
+	}
+	
 	// Use relationship miner
-	return e.relationshipMiner.FindRelationships(ctx, schemas)
+	relationships, err := e.relationshipMiner.FindRelationships(ctx, schemas)
+	
+	if err != nil && txn != nil {
+		txn.NoticeError(err)
+	}
+	
+	// Record custom event
+	if e.nrApp != nil && err == nil {
+		e.nrApp.RecordCustomEvent("RelationshipDiscovery", map[string]interface{}{
+			"schemas_analyzed":     len(schemas),
+			"relationships_found": len(relationships),
+		})
+	}
+	
+	return relationships, err
 }
 
 // Health returns the current health status
@@ -497,9 +606,11 @@ func (e *Engine) SetCache(cache Cache) {
 	e.cache = cache
 }
 
-// LoadConfig loads configuration from a file
-func LoadConfig(path string) (*Config, error) {
-	// TODO: Implement config loading from YAML/JSON
-	// For now, return default config
-	return DefaultConfig(), nil
+// SetNewRelicApp sets the New Relic application for APM
+func (e *Engine) SetNewRelicApp(app *newrelic.Application) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.nrApp = app
 }
+
+// LoadConfig is implemented in config.go

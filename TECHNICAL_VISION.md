@@ -276,48 +276,49 @@ class OrchestratorAgent(Agent):
 ### 3.3 Production Deployment Architecture
 
 ```yaml
-# Kubernetes-native deployment with auto-scaling
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: uds-orchestrator
-spec:
-  replicas: 3
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
-  template:
-    spec:
-      containers:
-      - name: orchestrator
-        image: uds/orchestrator:2.0.0
-        resources:
-          requests:
-            memory: "2Gi"
-            cpu: "1000m"
-          limits:
-            memory: "4Gi"
-            cpu: "2000m"
-        env:
-        - name: A2A_AUTH_KEY
-          valueFrom:
-            secretKeyRef:
-              name: uds-secrets
-              key: a2a-auth-key
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 5
+# Docker Swarm deployment with auto-scaling
+version: '3.8'
+
+services:
+  orchestrator:
+    image: uds/orchestrator:2.0.0
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+    environment:
+      - A2A_AUTH_KEY_FILE=/run/secrets/a2a-auth-key
+    secrets:
+      - a2a-auth-key
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    networks:
+      - uds-network
+
+secrets:
+  a2a-auth-key:
+    external: true
+
+networks:
+  uds-network:
+    driver: overlay
+    attachable: true
 ```
 
 ---

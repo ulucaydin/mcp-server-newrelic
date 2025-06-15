@@ -30,7 +30,7 @@ This document outlines the todo management and progress tracking strategy for Tr
 #### Week 4: Production Features
 16. ⬜ Implement Redis caching layer
 17. ⬜ Add Prometheus metrics and monitoring
-18. ⬜ Create Docker images and Kubernetes configs
+18. ⬜ Create Docker images and deployment configs
 19. ⬜ Write integration tests between tracks
 20. ⬜ Create production deployment guide
 

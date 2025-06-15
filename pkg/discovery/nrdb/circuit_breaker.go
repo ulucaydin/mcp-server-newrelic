@@ -6,9 +6,15 @@ import (
 	"fmt"
 	"sync"
 	"time"
-
-	"github.com/deepaucksharma/mcp-server-newrelic/pkg/discovery"
 )
+
+// NRDBClient interface defines the methods that the circuit breaker wraps
+type NRDBClient interface {
+	Query(ctx context.Context, nrql string) (*QueryResult, error)
+	QueryWithOptions(ctx context.Context, nrql string, opts QueryOptions) (*QueryResult, error)
+	GetEventTypes(ctx context.Context, filter EventTypeFilter) ([]string, error)
+	GetAccountInfo(ctx context.Context) (*AccountInfo, error)
+}
 
 // CircuitBreakerState represents the state of the circuit breaker
 type CircuitBreakerState int
@@ -184,12 +190,12 @@ func (cb *CircuitBreaker) Reset() {
 
 // ClientWithCircuitBreaker wraps an NRDB client with circuit breaker protection
 type ClientWithCircuitBreaker struct {
-	client  discovery.NRDBClient
+	client  NRDBClient
 	breaker *CircuitBreaker
 }
 
 // NewClientWithCircuitBreaker creates a new client with circuit breaker
-func NewClientWithCircuitBreaker(client discovery.NRDBClient, config CircuitBreakerConfig) discovery.NRDBClient {
+func NewClientWithCircuitBreaker(client NRDBClient, config CircuitBreakerConfig) NRDBClient {
 	return &ClientWithCircuitBreaker{
 		client:  client,
 		breaker: NewCircuitBreaker(config),
@@ -200,7 +206,7 @@ func NewClientWithCircuitBreaker(client discovery.NRDBClient, config CircuitBrea
 var ErrCircuitOpen = errors.New("circuit breaker is open")
 
 // Query executes a query with circuit breaker protection
-func (c *ClientWithCircuitBreaker) Query(ctx context.Context, nrql string) (*discovery.QueryResult, error) {
+func (c *ClientWithCircuitBreaker) Query(ctx context.Context, nrql string) (*QueryResult, error) {
 	if !c.breaker.Allow() {
 		return nil, fmt.Errorf("%w: too many failures", ErrCircuitOpen)
 	}
@@ -216,7 +222,7 @@ func (c *ClientWithCircuitBreaker) Query(ctx context.Context, nrql string) (*dis
 }
 
 // QueryWithOptions executes a query with options and circuit breaker protection
-func (c *ClientWithCircuitBreaker) QueryWithOptions(ctx context.Context, nrql string, opts discovery.QueryOptions) (*discovery.QueryResult, error) {
+func (c *ClientWithCircuitBreaker) QueryWithOptions(ctx context.Context, nrql string, opts QueryOptions) (*QueryResult, error) {
 	if !c.breaker.Allow() {
 		return nil, fmt.Errorf("%w: too many failures", ErrCircuitOpen)
 	}
@@ -232,7 +238,7 @@ func (c *ClientWithCircuitBreaker) QueryWithOptions(ctx context.Context, nrql st
 }
 
 // GetEventTypes gets event types with circuit breaker protection
-func (c *ClientWithCircuitBreaker) GetEventTypes(ctx context.Context, filter discovery.EventTypeFilter) ([]string, error) {
+func (c *ClientWithCircuitBreaker) GetEventTypes(ctx context.Context, filter EventTypeFilter) ([]string, error) {
 	if !c.breaker.Allow() {
 		return nil, fmt.Errorf("%w: too many failures", ErrCircuitOpen)
 	}
@@ -247,20 +253,20 @@ func (c *ClientWithCircuitBreaker) GetEventTypes(ctx context.Context, filter dis
 	return types, nil
 }
 
-// GetAccounts gets accounts with circuit breaker protection
-func (c *ClientWithCircuitBreaker) GetAccounts(ctx context.Context) ([]discovery.Account, error) {
+// GetAccountInfo gets account info with circuit breaker protection
+func (c *ClientWithCircuitBreaker) GetAccountInfo(ctx context.Context) (*AccountInfo, error) {
 	if !c.breaker.Allow() {
 		return nil, fmt.Errorf("%w: too many failures", ErrCircuitOpen)
 	}
 
-	accounts, err := c.client.GetAccounts(ctx)
+	info, err := c.client.GetAccountInfo(ctx)
 	if err != nil {
 		c.breaker.RecordFailure()
 		return nil, err
 	}
 
 	c.breaker.RecordSuccess()
-	return accounts, nil
+	return info, nil
 }
 
 // GetState returns the current circuit breaker state (for monitoring)

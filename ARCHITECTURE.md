@@ -1095,75 +1095,55 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
 CMD ["python", "-m", "uds.mcp.main"]
 ```
 
-### 7.2 Kubernetes Deployment
+### 7.2 Container Deployment
 
 ```yaml
-# k8s/base/deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: uds-orchestrator
-  labels:
-    app: uds
-    component: orchestrator
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: uds
-      component: orchestrator
-  template:
-    metadata:
-      labels:
-        app: uds
-        component: orchestrator
-    spec:
-      serviceAccountName: uds-orchestrator
-      containers:
-      - name: orchestrator
-        image: uds/orchestrator:2.0.0
-        ports:
-        - containerPort: 8080
-          name: http
-        - containerPort: 9090
-          name: metrics
-        env:
-        - name: AGENT_ID
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
-        - name: A2A_PRIVATE_KEY
-          valueFrom:
-            secretKeyRef:
-              name: uds-keys
-              key: orchestrator-private-key
-        resources:
-          requests:
-            memory: "2Gi"
-            cpu: "1000m"
-          limits:
-            memory: "4Gi"
-            cpu: "2000m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        volumeMounts:
-        - name: config
-          mountPath: /etc/uds
-          readOnly: true
-      volumes:
-      - name: config
-        configMap:
-          name: uds-config
+# docker-compose.production.yml
+version: '3.8'
+
+services:
+  orchestrator:
+    image: uds/orchestrator:2.0.0
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    environment:
+      - AGENT_ID=${HOSTNAME}
+      - A2A_PRIVATE_KEY_FILE=/run/secrets/orchestrator-key
+    secrets:
+      - orchestrator-key
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - config:/etc/uds:ro
+    networks:
+      - uds-network
+
+secrets:
+  orchestrator-key:
+    external: true
+
+volumes:
+  config:
+    driver: local
+
+networks:
+  uds-network:
+    driver: overlay
+    attachable: true
 ```
 
 ### 7.3 Service Mesh Configuration

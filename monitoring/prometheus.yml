@@ -1,0 +1,59 @@
+# Prometheus configuration for UDS
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'uds-monitor'
+
+# Load rules
+rule_files:
+  - 'alerts.yml'
+
+# Scrape configurations
+scrape_configs:
+  # Intelligence Engine metrics
+  - job_name: 'intelligence-engine'
+    static_configs:
+      - targets: ['intelligence-engine:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'intelligence-engine'
+      - source_labels: [__name__]
+        target_label: component
+        replacement: 'intelligence'
+
+  # UDS Core metrics
+  - job_name: 'uds-core'
+    static_configs:
+      - targets: ['uds-core:8081']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'uds-core'
+      - source_labels: [__name__]
+        target_label: component
+        replacement: 'core'
+
+  # Redis metrics (if redis_exporter is added)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'redis'
+
+  # Node exporter for system metrics
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'docker-host'

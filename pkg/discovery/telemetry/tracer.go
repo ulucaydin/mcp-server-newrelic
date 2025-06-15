@@ -8,6 +8,7 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
@@ -149,7 +150,7 @@ func SetAttributes(ctx context.Context, attrs map[string]interface{}) {
 }
 
 // SetStatus sets the status of the current span
-func SetStatus(ctx context.Context, code trace.StatusCode, description string) {
+func SetStatus(ctx context.Context, code codes.Code, description string) {
 	if span := trace.SpanFromContext(ctx); span.IsRecording() {
 		span.SetStatus(code, description)
 	}
