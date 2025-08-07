@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/ulucaydin-mcp-server-newrelic-badge.png)](https://mseep.ai/app/ulucaydin-mcp-server-newrelic)
+
 # New Relic NerdGraph MCP Server
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) <!-- Add license if applicable -->
