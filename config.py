@@ -20,4 +20,6 @@ else:
 
 
 # NerdGraph API Endpoint
-NERDGRAPH_URL = "https://api.newrelic.com/graphql" 
+NERDGRAPH_URL = os.getenv("NERDGRAPH_URL")
+if not NERDGRAPH_URL:
+    NERDGRAPH_URL = "https://api.newrelic.com/graphql" 
