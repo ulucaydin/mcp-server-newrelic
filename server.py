@@ -10,7 +10,6 @@ from features import common, entities, apm, synthetics, alerts
 # unless run directly with `python server.py` (not recommended for this setup).
 mcp = FastMCP(
     "New Relic NerdGraph MCP Server",
-    description="Provides tools and resources to interact with the New Relic NerdGraph API via MCP.",
     dependencies=["requests"] # Core dependency needed by client.py
 )
 
